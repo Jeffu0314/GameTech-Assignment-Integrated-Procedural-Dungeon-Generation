@@ -8,6 +8,6 @@ public class DungeonCell
     public DungeonCell(int x, int y)
     {
         position = new Vector2Int(x, y);
-        roomType = RoomType.Empty;
+        roomType = RoomType.Corridor;
     }
 }
