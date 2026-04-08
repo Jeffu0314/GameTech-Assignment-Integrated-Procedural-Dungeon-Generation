@@ -15,7 +15,7 @@ GameObject:
   m_Layer: 0
   m_Name: Wall_Up
   m_TagString: Untagged
-  m_Icon: {fileID: 0}
+  m_Icon: {fileID: -964228994112308473, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
@@ -127,7 +127,7 @@ GameObject:
   m_Layer: 0
   m_Name: Wall_Down
   m_TagString: Untagged
-  m_Icon: {fileID: 0}
+  m_Icon: {fileID: 3936346786652291628, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
@@ -239,7 +239,7 @@ GameObject:
   m_Layer: 0
   m_Name: Wall_Left
   m_TagString: Untagged
-  m_Icon: {fileID: 0}
+  m_Icon: {fileID: 5132851093641282708, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
@@ -345,7 +345,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2181693859399121413}
-  - component: {fileID: 2385196787521765031}
   m_Layer: 0
   m_Name: Room
   m_TagString: Untagged
@@ -362,7 +361,7 @@ Transform:
   m_GameObject: {fileID: 2156643612482516416}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4, y: 3.08661, z: 0.06788}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -373,22 +372,6 @@ Transform:
   - {fileID: 5230010847374549622}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2385196787521765031
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2156643612482516416}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dba64d38986fc874688c166e503c138d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RoomView
-  wallUp: {fileID: 655002476215777780}
-  wallDown: {fileID: 659107519055240730}
-  wallLeft: {fileID: 2057113360869156886}
-  wallRight: {fileID: 8228266865821194933}
 --- !u!1 &8228266865821194933
 GameObject:
   m_ObjectHideFlags: 0
@@ -404,7 +387,7 @@ GameObject:
   m_Layer: 0
   m_Name: Wall_Right
   m_TagString: Untagged
-  m_Icon: {fileID: 0}
+  m_Icon: {fileID: 5721338939258241955, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1

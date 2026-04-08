@@ -3,17 +3,17 @@ using UnityEngine;
 
 public class WFC_Cell
 {
-    public List<RoomType> possibleStates;
     public bool collapsed;
+    public List<WFCTile> possibleTiles;
 
-    public WFC_Cell(List<RoomType> states)
+    public WFC_Cell(List<WFCTile> allTiles)
     {
-        possibleStates = new List<RoomType>(states);
         collapsed = false;
+        possibleTiles = new List<WFCTile>(allTiles);
     }
 
     public int Entropy()
     {
-        return possibleStates.Count;
+        return possibleTiles.Count;
     }
 }
