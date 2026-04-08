@@ -18,4 +18,4 @@ MonoBehaviour:
   down: 1
   left: 1
   right: 1
-  weight: 0.1
+  weight: 1

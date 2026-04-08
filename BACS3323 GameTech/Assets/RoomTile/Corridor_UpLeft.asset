@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Corridor_UpLeft
   m_EditorClassIdentifier: Assembly-CSharp::WFCTile
   tileName: Corridor_UpLeft
-  prefab: {fileID: 2131511947363220314, guid: e4c8347fb755ab641b32e6e59a65f3d2, type: 3}
+  prefab: {fileID: 1015753925283207455, guid: e4c8347fb755ab641b32e6e59a65f3d2, type: 3}
   up: 1
   down: 0
   left: 1

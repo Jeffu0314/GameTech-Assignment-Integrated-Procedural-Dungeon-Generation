@@ -24,6 +24,13 @@ public class WFCGenerator : MonoBehaviour
             CollapseRandomCell();
         }
 
+        if (!DungeonValidator.IsConnected(grid, width, height))
+        {
+            Debug.Log("Dungeon disconnected. Regenerating...");
+            RunWFC();
+            return;
+        }
+
         SpawnDungeon();
     }
 
@@ -43,15 +50,27 @@ public class WFCGenerator : MonoBehaviour
 
     void SpawnDungeon()
     {
+        foreach (Transform child in transform)
+            Destroy(child.gameObject);
+
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
+                if (grid[x, y].possibleTiles.Count == 0)
+                    continue;
+
                 WFCTile tile = grid[x, y].possibleTiles[0];
+
+                if (tile.prefab == null)
+                {
+                    Debug.LogError($"Missing prefab on tile: {tile.tileName}");
+                    continue;
+                }
 
                 Vector3 pos = new Vector3(x * 10, 0, y * 10);
 
-                Instantiate(tile.prefab, pos, Quaternion.identity);
+                Instantiate(tile.prefab, pos, Quaternion.identity, transform);
             }
         }
     }
@@ -120,57 +139,54 @@ public class WFCGenerator : MonoBehaviour
 
         while (queue.Count > 0)
         {
-            Vector2Int currentPos = queue.Dequeue();
-            WFC_Cell currentCell = grid[currentPos.x, currentPos.y];
+            Vector2Int pos = queue.Dequeue();
+            WFCTile currentTile = grid[pos.x, pos.y].possibleTiles[0];
 
-            if (!currentCell.collapsed)
-                continue;
+            TryReduceNeighbor(pos, Vector2Int.up, currentTile, queue);
+            TryReduceNeighbor(pos, Vector2Int.down, currentTile, queue);
+            TryReduceNeighbor(pos, Vector2Int.left, currentTile, queue);
+            TryReduceNeighbor(pos, Vector2Int.right, currentTile, queue);
+        }
+    }
 
-            WFCTile currentTile = currentCell.possibleTiles[0];
+    void TryReduceNeighbor(Vector2Int pos, Vector2Int dir,
+    WFCTile currentTile, Queue<Vector2Int> queue)
+    {
+        int nx = pos.x + dir.x;
+        int ny = pos.y + dir.y;
 
-            Vector2Int[] directions =
-            {
-                Vector2Int.up,
-                Vector2Int.down,
-                Vector2Int.left,
-                Vector2Int.right
-            };
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height)
+            return;
 
-            foreach (Vector2Int dir in directions)
-            {
-                int nx = currentPos.x + dir.x;
-                int ny = currentPos.y + dir.y;
+        WFC_Cell neighbor = grid[nx, ny];
 
-                if (nx < 0 || ny < 0 || nx >= width || ny >= height)
-                    continue;
+        if (neighbor.collapsed)
+            return;
 
-                WFC_Cell neighbor = grid[nx, ny];
+        int before = neighbor.possibleTiles.Count;
 
-                if (neighbor.collapsed)
-                    continue;
+        neighbor.possibleTiles.RemoveAll(tile =>
+            !Compatible(currentTile, tile, dir));
 
-                int before = neighbor.possibleTiles.Count;
+        int after = neighbor.possibleTiles.Count;
 
-                neighbor.possibleTiles.RemoveAll(tile =>
-                    !Compatible(currentTile, tile, dir));
+        // contradiction: impossible map
+        if (after == 0)
+        {
+            Debug.Log("Contradiction detected. Regenerating...");
 
-                int after = neighbor.possibleTiles.Count;
+            foreach (Transform child in transform)
+                Destroy(child.gameObject);
 
-                // contradiction
-                if (after == 0)
-                {
-                    Debug.Log("Contradiction! Restart map.");
-                    RunWFC();
-                    return;
-                }
+            RunWFC();
+            return;
+        }
 
-                // if neighbor got reduced to one possible tile, collapse it and continue propagating
-                if (after == 1 && before > 1)
-                {
-                    neighbor.collapsed = true;
-                    queue.Enqueue(new Vector2Int(nx, ny));
-                }
-            }
+        // if only one tile remains, collapse immediately
+        if (after == 1 && before > 1)
+        {
+            neighbor.collapsed = true;
+            queue.Enqueue(new Vector2Int(nx, ny));
         }
     }
 
