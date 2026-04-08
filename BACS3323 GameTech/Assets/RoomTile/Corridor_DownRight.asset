@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c6eb36fbc5909f34fb75386e5b830132, type: 3}
-  m_Name: Corrider_LeftRight
-  m_EditorClassIdentifier: Assembly-CSharp::WFCTiile
-  tileName: Corrider_LeftRight
-  prefab: {fileID: 7584296409556671223, guid: 297d0a90c0e4cc941b98c972007921b6, type: 3}
+  m_Name: Corridor_DownRight
+  m_EditorClassIdentifier: Assembly-CSharp::WFCTile
+  tileName: Corridor_DownRight
+  prefab: {fileID: 863888527111319945, guid: d0959608746a49c4e8bac6b2b33b5c47, type: 3}
   up: 0
-  down: 0
-  left: 1
+  down: 1
+  left: 0
   right: 1
   weight: 1

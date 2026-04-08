@@ -10,6 +10,11 @@ public class WFCGenerator : MonoBehaviour
 
     private WFC_Cell[,] grid;
 
+    public void Start()
+    {
+        RunWFC();
+    }
+
     void RunWFC()
     {
         InitializeGrid();
@@ -108,29 +113,66 @@ public class WFCGenerator : MonoBehaviour
     }
 
     // Propagate constraints to neighbors after collapsing a cell
-    void Propagate(int x, int y)
+    void Propagate(int startX, int startY)
     {
-        WFCTile current = grid[x, y].possibleTiles[0];
+        Queue<Vector2Int> queue = new Queue<Vector2Int>();
+        queue.Enqueue(new Vector2Int(startX, startY));
 
-        CheckNeighbor(x, y + 1, tile => tile.down == current.up);
-        CheckNeighbor(x, y - 1, tile => tile.up == current.down);
-        CheckNeighbor(x - 1, y, tile => tile.right == current.left);
-        CheckNeighbor(x + 1, y, tile => tile.left == current.right);
+        while (queue.Count > 0)
+        {
+            Vector2Int currentPos = queue.Dequeue();
+            WFC_Cell currentCell = grid[currentPos.x, currentPos.y];
+
+            if (!currentCell.collapsed)
+                continue;
+
+            WFCTile currentTile = currentCell.possibleTiles[0];
+
+            Vector2Int[] directions =
+            {
+                Vector2Int.up,
+                Vector2Int.down,
+                Vector2Int.left,
+                Vector2Int.right
+            };
+
+            foreach (Vector2Int dir in directions)
+            {
+                int nx = currentPos.x + dir.x;
+                int ny = currentPos.y + dir.y;
+
+                if (nx < 0 || ny < 0 || nx >= width || ny >= height)
+                    continue;
+
+                WFC_Cell neighbor = grid[nx, ny];
+
+                if (neighbor.collapsed)
+                    continue;
+
+                int before = neighbor.possibleTiles.Count;
+
+                neighbor.possibleTiles.RemoveAll(tile =>
+                    !Compatible(currentTile, tile, dir));
+
+                int after = neighbor.possibleTiles.Count;
+
+                // contradiction
+                if (after == 0)
+                {
+                    Debug.Log("Contradiction! Restart map.");
+                    RunWFC();
+                    return;
+                }
+
+                // if neighbor got reduced to one possible tile, collapse it and continue propagating
+                if (after == 1 && before > 1)
+                {
+                    neighbor.collapsed = true;
+                    queue.Enqueue(new Vector2Int(nx, ny));
+                }
+            }
+        }
     }
-    // Check a neighbor cell and remove incompatible tiles based on the given rule
-    void CheckNeighbor(int x, int y, System.Predicate<WFCTile> rule)
-    {
-        if (x < 0 || y < 0 || x >= width || y >= height)
-            return;
-
-        WFC_Cell neighbor = grid[x, y];
-
-        if (neighbor.collapsed)
-            return;
-
-        neighbor.possibleTiles.RemoveAll(tile => !rule(tile));
-    }
-
 
     // Check if two tiles are compatible in a given direction
     bool Compatible(WFCTile a, WFCTile b, Vector2Int dir)
