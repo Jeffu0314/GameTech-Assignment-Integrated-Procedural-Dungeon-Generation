@@ -14,7 +14,7 @@ public class DungeonValidator
         while (queue.Count > 0)
         {
             Vector2Int pos = queue.Dequeue();
-            WFCTile tile = grid[pos.x, pos.y].possibleTiles[0];
+            TileOption tile = grid[pos.x, pos.y].possibleOptions[0];
 
             CheckMove(pos, Vector2Int.up, tile, grid, visited, queue, width, height);
             CheckMove(pos, Vector2Int.down, tile, grid, visited, queue, width, height);

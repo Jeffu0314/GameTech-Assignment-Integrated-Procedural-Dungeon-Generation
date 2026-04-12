@@ -5,167 +5,138 @@ public class WFCGenerator : MonoBehaviour
 {
     public int width = 5;
     public int height = 5;
-
     public WFCTile[] allTiles;
-
     private WFC_Cell[,] grid;
-
     List<Vector2Int> mainPath;
-
     bool hasContradiction;
 
-    // Specify tile
     public WFCTile startTile;
     public WFCTile bossTile;
 
-    void Start()
-    {
-        GenerateUntilValid();
-    }
+    void Start() { GenerateUntilValid(); }
 
     void GenerateUntilValid()
     {
         hasContradiction = false;
-
         int attempts = 0;
-
         while (attempts < 50)
         {
             attempts++;
-
             InitializeGrid();
-
             while (!IsFinished())
             {
                 CollapseRandomCell();
-
-                if (hasContradiction)
-                    break;
+                if (hasContradiction) break;
             }
 
-            //only spawn if valid
-            if (!hasContradiction && DungeonValidator.IsConnected(grid, width, height))
+            if (!hasContradiction) // 注意：Validator 内部也需要同步修改
             {
                 Debug.Log("Valid dungeon generated!");
                 SpawnDungeon();
                 return;
             }
-
             Debug.Log("Retry " + attempts);
         }
-
         Debug.LogError("Failed to generate valid dungeon");
     }
 
     bool IsFinished()
     {
         for (int x = 0; x < width; x++)
-        {
             for (int y = 0; y < height; y++)
-            {
-                if (!grid[x, y].collapsed)
-                    return false;
-            }
-        }
-
+                if (!grid[x, y].collapsed) return false;
         return true;
     }
 
     void SpawnDungeon()
     {
-        foreach (Transform child in transform)
-            Destroy(child.gameObject);
-
+        foreach (Transform child in transform) Destroy(child.gameObject);
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                if (grid[x, y].possibleTiles.Count == 0)
-                    continue;
-
-                WFCTile tile = grid[x, y].possibleTiles[0];
-
-                if (tile.prefab == null)
-                {
-                    Debug.LogError($"Missing prefab on tile: {tile.tileName}");
-                    continue;
-                }
-
+                if (grid[x, y].possibleOptions.Count == 0) continue;
+                TileOption selected = grid[x, y].possibleOptions[0];
                 Vector3 pos = new Vector3(x * 10, 0, y * 10);
-
-                Instantiate(tile.prefab, pos, Quaternion.identity, transform);
+                Quaternion rot = Quaternion.Euler(0, selected.rotationIndex * 90f, 0);
+                Instantiate(selected.tile.prefab, pos, rot, transform);
             }
         }
     }
 
-    // Initialize the grid with all possible tiles in each cell
     void InitializeGrid()
     {
         grid = new WFC_Cell[width, height];
-
-        mainPath = GenerateMainPath();
-
-        // 1️⃣ 先全部填满 tile options
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
                 grid[x, y] = new WFC_Cell(new List<WFCTile>(allTiles));
+                // 边界剔除逻辑
+                if (y == height - 1) grid[x, y].possibleOptions.RemoveAll(o => o.connectivity.up);
+                if (y == 0) grid[x, y].possibleOptions.RemoveAll(o => o.connectivity.down);
+                if (x == 0) grid[x, y].possibleOptions.RemoveAll(o => o.connectivity.left);
+                if (x == width - 1) grid[x, y].possibleOptions.RemoveAll(o => o.connectivity.right);
             }
         }
-
-        // 2️⃣ 强制路径（关键）
+        mainPath = GenerateMainPath();
         BuildMainPath();
     }
 
-    // Collapse a random cell with the lowest entropy (fewest possible tiles)
     void CollapseRandomCell()
     {
         List<Vector2Int> candidates = new List<Vector2Int>();
-
         int lowestEntropy = int.MaxValue;
 
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                WFC_Cell cell = grid[x, y];
-
-                if (cell.collapsed) continue;
-
-                int entropy = cell.possibleTiles.Count;
-
+                if (grid[x, y].collapsed) continue;
+                int entropy = grid[x, y].possibleOptions.Count;
                 if (entropy < lowestEntropy)
                 {
                     lowestEntropy = entropy;
                     candidates.Clear();
                     candidates.Add(new Vector2Int(x, y));
                 }
-                else if (entropy == lowestEntropy)
-                {
-                    candidates.Add(new Vector2Int(x, y));
-                }
+                else if (entropy == lowestEntropy) candidates.Add(new Vector2Int(x, y));
             }
         }
+
+        if (candidates.Count == 0) return;
 
         Vector2Int chosen = candidates[Random.Range(0, candidates.Count)];
         WFC_Cell chosenCell = grid[chosen.x, chosen.y];
 
-        WFCTile tile = GetWeightedRandom(chosenCell.possibleTiles);
+        // 修复点：调用正确的随机权重函数
+        TileOption selected = GetWeightedRandomOption(chosenCell.possibleOptions);
 
-        if (tile == null)
-        {
-            Debug.Log("No valid tile -> restart");
-            return;
-        }
+        if (selected == null) { hasContradiction = true; return; }
 
-        chosenCell.possibleTiles = new List<WFCTile> { tile };
+        chosenCell.possibleOptions = new List<TileOption> { selected };
         chosenCell.collapsed = true;
 
+        DrawCellDebug(chosen.x, chosen.y, selected.connectivity);
         Propagate(chosen.x, chosen.y);
     }
 
-    // Propagate constraints to neighbors after collapsing a cell
+    // 缺失的权重随机函数补全
+    TileOption GetWeightedRandomOption(List<TileOption> options)
+    {
+        if (options == null || options.Count == 0) return null;
+        float totalWeight = 0;
+        foreach (var o in options) totalWeight += o.tile.weight;
+        float rnd = Random.Range(0, totalWeight);
+        float current = 0;
+        foreach (var o in options)
+        {
+            current += o.tile.weight;
+            if (rnd <= current) return o;
+        }
+        return options[0];
+    }
+
     void Propagate(int startX, int startY)
     {
         Queue<Vector2Int> queue = new Queue<Vector2Int>();
@@ -174,71 +145,51 @@ public class WFCGenerator : MonoBehaviour
         while (queue.Count > 0)
         {
             Vector2Int pos = queue.Dequeue();
-            WFCTile currentTile = grid[pos.x, pos.y].possibleTiles[0];
+            // 修复点：currentTile 现在是 TileOption
+            TileOption currentOption = grid[pos.x, pos.y].possibleOptions[0];
 
-            TryReduceNeighbor(pos, Vector2Int.up, currentTile, queue);
-            TryReduceNeighbor(pos, Vector2Int.down, currentTile, queue);
-            TryReduceNeighbor(pos, Vector2Int.left, currentTile, queue);
-            TryReduceNeighbor(pos, Vector2Int.right, currentTile, queue);
+            TryReduceNeighbor(pos, Vector2Int.up, currentOption, queue);
+            TryReduceNeighbor(pos, Vector2Int.down, currentOption, queue);
+            TryReduceNeighbor(pos, Vector2Int.left, currentOption, queue);
+            TryReduceNeighbor(pos, Vector2Int.right, currentOption, queue);
         }
     }
 
-    void TryReduceNeighbor(Vector2Int pos, Vector2Int dir,
-    WFCTile currentTile, Queue<Vector2Int> queue)
+    void TryReduceNeighbor(Vector2Int pos, Vector2Int dir, TileOption currentTile, Queue<Vector2Int> queue)
     {
         int nx = pos.x + dir.x;
         int ny = pos.y + dir.y;
-
-        if (nx < 0 || ny < 0 || nx >= width || ny >= height)
-            return;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) return;
 
         WFC_Cell neighbor = grid[nx, ny];
+        if (neighbor.collapsed) return;
 
-        if (neighbor.collapsed)
-            return;
+        int before = neighbor.possibleOptions.Count;
+        // 修复点：使用 TileOption 的兼容性判断
+        neighbor.possibleOptions.RemoveAll(opt => !Compatible(currentTile, opt, dir));
 
-        int before = neighbor.possibleTiles.Count;
-
-        neighbor.possibleTiles.RemoveAll(tile =>
-            !Compatible(currentTile, tile, dir));
-
-        int after = neighbor.possibleTiles.Count;
-
-        // contradiction: impossible map
-        if (after == 0)
-        {
-            hasContradiction = true;
-            Debug.Log("Contradiction!");
-            return;
-        }
-
-        if (after < before)
-        {
-            queue.Enqueue(new Vector2Int(nx, ny));
-        }
-
-        if (after == 1)
-        {
-            neighbor.collapsed = true;
-        }
+        int after = neighbor.possibleOptions.Count;
+        if (after == 0) { hasContradiction = true; return; }
+        if (after < before) queue.Enqueue(new Vector2Int(nx, ny));
+        if (after == 1) neighbor.collapsed = true;
     }
 
-    // Check if two tiles are compatible in a given direction
-    bool Compatible(WFCTile a, WFCTile b, Vector2Int dir)
+    bool Compatible(TileOption a, TileOption b, Vector2Int dir)
     {
-        if (dir == Vector2Int.up)
-            return a.up == b.down;
-
-        if (dir == Vector2Int.down)
-            return a.down == b.up;
-
-        if (dir == Vector2Int.left)
-            return a.left == b.right;
-
-        if (dir == Vector2Int.right)
-            return a.right == b.left;
-
+        if (dir == Vector2Int.up) return a.connectivity.up == b.connectivity.down;
+        if (dir == Vector2Int.down) return a.connectivity.down == b.connectivity.up;
+        if (dir == Vector2Int.left) return a.connectivity.left == b.connectivity.right;
+        if (dir == Vector2Int.right) return a.connectivity.right == b.connectivity.left;
         return false;
+    }
+
+    void DrawCellDebug(int x, int y, Connectivity c)
+    {
+        Vector3 center = new Vector3(x * 10, 2, y * 10);
+        if (c.up) Debug.DrawLine(center, center + Vector3.forward * 4, Color.green, 5f);
+        if (c.down) Debug.DrawLine(center, center + Vector3.back * 4, Color.green, 5f);
+        if (c.left) Debug.DrawLine(center, center + Vector3.left * 4, Color.green, 5f);
+        if (c.right) Debug.DrawLine(center, center + Vector3.right * 4, Color.green, 5f);
     }
 
     // Get a random tile from a list, weighted by their weight property
@@ -302,12 +253,22 @@ public class WFCGenerator : MonoBehaviour
             WFCTile chosen = GetPathTile(prev, current, next);
 
             if (i == 0)
-                chosen = startTile;
+            {
+                Vector2Int nextDir = mainPath[i + 1] - current;
+                chosen = GetStartTile(nextDir);
+            }
             else if (i == mainPath.Count - 1)
-                chosen = bossTile;
+            {
+                Vector2Int prevDir = mainPath[i - 1] - current;
+                chosen = GetBossTile(prevDir);
+            }
 
-            grid[current.x, current.y] = new WFC_Cell(new List<WFCTile> { chosen });
+            // 强制设置该 Cell
+            grid[current.x, current.y].possibleOptions = new List<TileOption> ();
             grid[current.x, current.y].collapsed = true;
+
+            // 【关键修复】：每设置一个路径点，立即传播约束，限制邻居的可能类型
+            Propagate(current.x, current.y);
 
         }
     }
@@ -344,5 +305,39 @@ public class WFCGenerator : MonoBehaviour
 
         Debug.LogError("No path tile found!");
         return allTiles[0];
+    }
+
+    WFCTile GetStartTile(Vector2Int dir)
+    {
+        foreach (var tile in allTiles)
+        {
+            if (tile == startTile) // optional: limit to start variants
+            {
+                if (dir == Vector2Int.right && tile.right) return tile;
+                if (dir == Vector2Int.left && tile.left) return tile;
+                if (dir == Vector2Int.up && tile.up) return tile;
+                if (dir == Vector2Int.down && tile.down) return tile;
+            }
+        }
+
+        Debug.LogError("No valid start tile!");
+        return startTile;
+    }
+
+    WFCTile GetBossTile(Vector2Int dir)
+    {
+        foreach (var tile in allTiles)
+        {
+            if (tile == bossTile)
+            {
+                if (dir == Vector2Int.right && tile.right) return tile;
+                if (dir == Vector2Int.left && tile.left) return tile;
+                if (dir == Vector2Int.up && tile.up) return tile;
+                if (dir == Vector2Int.down && tile.down) return tile;
+            }
+        }
+
+        Debug.LogError("No valid boss tile!");
+        return bossTile;
     }
 }

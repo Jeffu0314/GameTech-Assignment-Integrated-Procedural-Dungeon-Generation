@@ -427,8 +427,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b678879439bcdf64eacc19fd1d8953bd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WFCGenerator
-  width: 4
-  height: 4
+  width: 5
+  height: 5
   allTiles:
   - {fileID: 11400000, guid: 589b3fd8329b9fe4694e9bc504d34fb3, type: 2}
   - {fileID: 11400000, guid: 56e41a407a368e54489df796ad6b3059, type: 2}
