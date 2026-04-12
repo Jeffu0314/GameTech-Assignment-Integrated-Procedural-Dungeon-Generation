@@ -430,13 +430,23 @@ MonoBehaviour:
   width: 4
   height: 4
   allTiles:
+  - {fileID: 11400000, guid: 589b3fd8329b9fe4694e9bc504d34fb3, type: 2}
   - {fileID: 11400000, guid: 56e41a407a368e54489df796ad6b3059, type: 2}
   - {fileID: 11400000, guid: 4450440ae29d7fc4fbded257ba5f65e6, type: 2}
-  - {fileID: 11400000, guid: 589b3fd8329b9fe4694e9bc504d34fb3, type: 2}
   - {fileID: 11400000, guid: 360003955c2f6e4479b1637c441692fe, type: 2}
   - {fileID: 11400000, guid: 9cc06562a127e9142bd217e2739bb320, type: 2}
   - {fileID: 11400000, guid: 3930c849cbd3a3e45ae8980935a0f1d9, type: 2}
   - {fileID: 11400000, guid: c0023c2255a0a1148b93efd3067826c0, type: 2}
+  - {fileID: 11400000, guid: dccd145f7207118488883eced5d0b909, type: 2}
+  - {fileID: 11400000, guid: 2e09d88837743d64695225c77c0c25b4, type: 2}
+  - {fileID: 11400000, guid: 1ca61820b5e55a240b49a75ca81fc96d, type: 2}
+  - {fileID: 11400000, guid: 3e0f878ddf4053b4b9a2234a187b5deb, type: 2}
+  - {fileID: 11400000, guid: d7f6aff89ea0d2a428cc6a1e5574952c, type: 2}
+  - {fileID: 11400000, guid: 1cb10a4d244947b458db7017df9095a8, type: 2}
+  - {fileID: 11400000, guid: b33cdc3c8f7b9d6479eaa8e631a9542b, type: 2}
+  - {fileID: 11400000, guid: ecf5e29c0d80cda4480bd90967d5aae9, type: 2}
+  startTile: {fileID: 11400000, guid: f7c30bad1412ff24f90861763b861946, type: 2}
+  bossTile: {fileID: 11400000, guid: 9bfe7472959497c4ebadf221170e2647, type: 2}
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0

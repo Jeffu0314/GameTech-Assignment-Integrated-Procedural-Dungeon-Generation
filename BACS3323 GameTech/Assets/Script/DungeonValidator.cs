@@ -16,10 +16,10 @@ public class DungeonValidator
             Vector2Int pos = queue.Dequeue();
             WFCTile tile = grid[pos.x, pos.y].possibleTiles[0];
 
-            CheckMove(pos, Vector2Int.up, tile.up, tile.down, grid, visited, queue, width, height);
-            CheckMove(pos, Vector2Int.down, tile.down, tile.up, grid, visited, queue, width, height);
-            CheckMove(pos, Vector2Int.left, tile.left, tile.right, grid, visited, queue, width, height);
-            CheckMove(pos, Vector2Int.right, tile.right, tile.left, grid, visited, queue, width, height);
+            CheckMove(pos, Vector2Int.up, tile, grid, visited, queue, width, height);
+            CheckMove(pos, Vector2Int.down, tile, grid, visited, queue, width, height);
+            CheckMove(pos, Vector2Int.left, tile, grid, visited, queue, width, height);
+            CheckMove(pos, Vector2Int.right, tile, grid, visited, queue, width, height);
         }
 
         for (int x = 0; x < width; x++)
@@ -35,20 +35,9 @@ public class DungeonValidator
     }
 
 
-    static void CheckMove(
-        Vector2Int pos,
-        Vector2Int dir,
-        bool currentHasDoor,
-        bool unused,
-        WFC_Cell[,] grid,
-        bool[,] visited,
-        Queue<Vector2Int> queue,
-        int width,
-        int height)
+    static void CheckMove(Vector2Int pos, Vector2Int dir, WFCTile currentTile,
+    WFC_Cell[,] grid, bool[,] visited, Queue<Vector2Int> queue, int width, int height)
     {
-        if (!currentHasDoor)
-            return;
-
         int nx = pos.x + dir.x;
         int ny = pos.y + dir.y;
 
@@ -56,6 +45,25 @@ public class DungeonValidator
             return;
 
         if (visited[nx, ny])
+            return;
+
+        WFCTile neighborTile = grid[nx, ny].possibleTiles[0];
+
+        bool canMove = false;
+
+        if (dir == Vector2Int.up)
+            canMove = currentTile.up && neighborTile.down;
+
+        else if (dir == Vector2Int.down)
+            canMove = currentTile.down && neighborTile.up;
+
+        else if (dir == Vector2Int.left)
+            canMove = currentTile.left && neighborTile.right;
+
+        else if (dir == Vector2Int.right)
+            canMove = currentTile.right && neighborTile.left;
+
+        if (!canMove)
             return;
 
         visited[nx, ny] = true;

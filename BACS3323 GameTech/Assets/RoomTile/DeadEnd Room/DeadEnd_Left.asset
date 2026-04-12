@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c6eb36fbc5909f34fb75386e5b830132, type: 3}
-  m_Name: Corridor_DownLeft
+  m_Name: DeadEnd_Left
   m_EditorClassIdentifier: Assembly-CSharp::WFCTile
-  tileName: Corridor_DownLeft
-  prefab: {fileID: 69801886974408031, guid: c2abc144faa77c446a86ef4c85566a43, type: 3}
+  tileName: DeadEnd_Left
+  prefab: {fileID: 6955593714811884094, guid: 3967b0dd8a9247946b1897728721b6ce, type: 3}
   up: 0
-  down: 1
+  down: 0
   left: 1
   right: 0
-  weight: 1
+  weight: 0.2
