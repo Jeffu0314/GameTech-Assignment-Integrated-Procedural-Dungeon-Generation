@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using static UnityEditor.PlayerSettings;
+using static WFCTile;
 
 public class WFCGenerator : MonoBehaviour
 {
@@ -10,7 +12,11 @@ public class WFCGenerator : MonoBehaviour
 
     private WFC_Cell[,] grid;
 
+    public List<WFCTile> normalTiles;
+
+
     List<Vector2Int> mainPath;
+    HashSet<Vector2Int> mainPathSet;
 
     bool hasContradiction;
 
@@ -18,9 +24,41 @@ public class WFCGenerator : MonoBehaviour
     public WFCTile startTile;
     public WFCTile bossTile;
 
+    void Awake()
+    {
+        normalTiles = new List<WFCTile>();
+
+        foreach (var t in allTiles)
+        {
+            if (t.roomType == WFCTile.RoomType.Corridor ||
+                t.roomType == WFCTile.RoomType.Combat ||
+                t.roomType == WFCTile.RoomType.Treasure)
+            {
+                normalTiles.Add(t);
+            }
+        }
+    }
+
     void Start()
     {
+        DebugTileStats();
         GenerateUntilValid();
+        AssignRoomTypes();
+    }
+
+    void DebugTileStats()
+    {
+        int up = 0, down = 0, left = 0, right = 0;
+
+        foreach (var t in allTiles)
+        {
+            if (t.up) up++;
+            if (t.down) down++;
+            if (t.left) left++;
+            if (t.right) right++;
+        }
+
+        Debug.Log($"UP:{up} DOWN:{down} LEFT:{left} RIGHT:{right}");
     }
 
     void GenerateUntilValid()
@@ -44,7 +82,7 @@ public class WFCGenerator : MonoBehaviour
             }
 
             //only spawn if valid
-            if (!hasContradiction && DungeonValidator.IsConnected(grid, width, height))
+            if (!hasContradiction && DungeonValidator.IsReachable(grid, width, height))
             {
                 Debug.Log("Valid dungeon generated!");
                 SpawnDungeon();
@@ -91,9 +129,13 @@ public class WFCGenerator : MonoBehaviour
                     continue;
                 }
 
-                Vector3 pos = new Vector3(x * 10, 0, y * 10);
+                Vector3 pos = new Vector3(x * 10, 3, y * 10);
 
-                Instantiate(tile.prefab, pos, Quaternion.identity, transform);
+                RoomType type = grid[x, y].assignedType;
+
+                GameObject prefabToSpawn = GetPrefabByType(type, tile);
+
+                Instantiate(prefabToSpawn, pos, Quaternion.identity, transform);
             }
         }
     }
@@ -110,18 +152,27 @@ public class WFCGenerator : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
-                grid[x, y] = new WFC_Cell(new List<WFCTile>(allTiles));
+                grid[x, y] = new WFC_Cell(new List<WFCTile>(normalTiles));
             }
         }
 
         // 2️⃣ 强制路径（关键）
         BuildMainPath();
+
+        foreach (var pos in mainPath)
+        {
+            Propagate(pos.x, pos.y);
+
+            if (hasContradiction)
+                return;
+        }
     }
 
     // Collapse a random cell with the lowest entropy (fewest possible tiles)
     void CollapseRandomCell()
     {
         List<Vector2Int> candidates = new List<Vector2Int>();
+        mainPathSet = new HashSet<Vector2Int>(mainPath);
 
         int lowestEntropy = int.MaxValue;
 
@@ -131,7 +182,10 @@ public class WFCGenerator : MonoBehaviour
             {
                 WFC_Cell cell = grid[x, y];
 
-                if (cell.collapsed) continue;
+                if (mainPathSet.Contains(new Vector2Int(x, y)))
+                    continue;
+
+                if (cell.collapsed || cell.locked) continue;
 
                 int entropy = cell.possibleTiles.Count;
 
@@ -147,6 +201,9 @@ public class WFCGenerator : MonoBehaviour
                 }
             }
         }
+
+        if (candidates.Count == 0)
+            return;
 
         Vector2Int chosen = candidates[Random.Range(0, candidates.Count)];
         WFC_Cell chosenCell = grid[chosen.x, chosen.y];
@@ -194,6 +251,9 @@ public class WFCGenerator : MonoBehaviour
 
         WFC_Cell neighbor = grid[nx, ny];
 
+        if (neighbor.locked)
+            return;
+
         if (neighbor.collapsed)
             return;
 
@@ -208,6 +268,7 @@ public class WFCGenerator : MonoBehaviour
         if (after == 0)
         {
             hasContradiction = true;
+            Debug.Log($"Reducing neighbor at {nx},{ny} from {before} to {after}");
             Debug.Log("Contradiction!");
             return;
         }
@@ -220,6 +281,7 @@ public class WFCGenerator : MonoBehaviour
         if (after == 1)
         {
             neighbor.collapsed = true;
+            queue.Enqueue(new Vector2Int(nx, ny));
         }
     }
 
@@ -227,18 +289,18 @@ public class WFCGenerator : MonoBehaviour
     bool Compatible(WFCTile a, WFCTile b, Vector2Int dir)
     {
         if (dir == Vector2Int.up)
-            return a.up == b.down;
+            return !(a.up && !b.down);
 
         if (dir == Vector2Int.down)
-            return a.down == b.up;
+            return !(a.down && !b.up);
 
         if (dir == Vector2Int.left)
-            return a.left == b.right;
+            return !(a.left && !b.right);
 
         if (dir == Vector2Int.right)
-            return a.right == b.left;
+            return !(a.right && !b.left);
 
-        return false;
+        return true;
     }
 
     // Get a random tile from a list, weighted by their weight property
@@ -301,19 +363,46 @@ public class WFCGenerator : MonoBehaviour
 
             WFCTile chosen = GetPathTile(prev, current, next);
 
-            if (i == 0)
-                chosen = startTile;
-            else if (i == mainPath.Count - 1)
-                chosen = bossTile;
+            var cell = new WFC_Cell(new List<WFCTile> { });
 
-            grid[current.x, current.y] = new WFC_Cell(new List<WFCTile> { chosen });
-            grid[current.x, current.y].collapsed = true;
+            // START
+            if (i == 0)
+            {
+                cell = new WFC_Cell(new List<WFCTile> { startTile });
+                cell.collapsed = true;
+                cell.locked = true;
+                grid[current.x, current.y] = cell;
+            }
+            // BOSS
+            else if (i == mainPath.Count - 1)
+            {
+                cell = new WFC_Cell(new List<WFCTile> { bossTile });
+                cell.collapsed = true;
+                cell.locked = true;
+                grid[current.x, current.y] = cell;
+            }
+            else
+            {
+                cell = new WFC_Cell(new List<WFCTile>(normalTiles));
+                cell.possibleTiles = new List<WFCTile> { chosen };
+                cell.collapsed = true;
+                cell.locked = true;
+                grid[current.x, current.y] = cell;
+            }
+
+            cell = new WFC_Cell(new List<WFCTile> { chosen });
+            cell.collapsed = true;
+            cell.locked = true;
+            grid[current.x, current.y] = cell;
 
         }
     }
 
     WFCTile GetPathTile(Vector2Int? prev, Vector2Int current, Vector2Int? next)
     {
+        WFCTile best = null;
+        List<WFCTile> candidates = new List<WFCTile>();
+
         foreach (var tile in allTiles)
         {
             bool valid = true;
@@ -321,7 +410,6 @@ public class WFCGenerator : MonoBehaviour
             if (prev.HasValue)
             {
                 Vector2Int dir = prev.Value - current;
-
                 if (dir == Vector2Int.up && !tile.up) valid = false;
                 if (dir == Vector2Int.down && !tile.down) valid = false;
                 if (dir == Vector2Int.left && !tile.left) valid = false;
@@ -331,18 +419,210 @@ public class WFCGenerator : MonoBehaviour
             if (next.HasValue)
             {
                 Vector2Int dir = next.Value - current;
-
                 if (dir == Vector2Int.up && !tile.up) valid = false;
                 if (dir == Vector2Int.down && !tile.down) valid = false;
                 if (dir == Vector2Int.left && !tile.left) valid = false;
                 if (dir == Vector2Int.right && !tile.right) valid = false;
             }
 
+            if (!valid) continue;
+
+            int openings = 0;
+            if (tile.up) openings++;
+            if (tile.down) openings++;
+            if (tile.left) openings++;
+            if (tile.right) openings++;
+
+            if (openings != 2) continue;
+
             if (valid)
-                return tile;
+                candidates.Add(tile);
         }
 
+        if (candidates.Count > 0)
+            return candidates[Random.Range(0, candidates.Count)];
+
+        if (best != null)
+            return best;
+
         Debug.LogError("No path tile found!");
+        Debug.Log("Candidates: " + candidates.Count);
         return allTiles[0];
+    }
+
+    WFCTile GetTileMatchingDirection(Vector2Int dir)
+    {
+        foreach (var tile in allTiles)
+        {
+            if (dir == Vector2Int.up && tile.up) return tile;
+            if (dir == Vector2Int.down && tile.down) return tile;
+            if (dir == Vector2Int.left && tile.left) return tile;
+            if (dir == Vector2Int.right && tile.right) return tile;
+        }
+
+        return startTile;
+    }
+
+    WFCTile GetStartTile(Vector2Int dir)
+    {
+        foreach (var tile in allTiles)
+        {
+            if (tile.tileName.Contains("Start"))
+            {
+                if (dir == Vector2Int.up && tile.up) return tile;
+                if (dir == Vector2Int.down && tile.down) return tile;
+                if (dir == Vector2Int.left && tile.left) return tile;
+                if (dir == Vector2Int.right && tile.right) return tile;
+            }
+        }
+        return null;
+    }
+
+    WFCTile GetBossTile(Vector2Int dir)
+    {
+        foreach (var tile in allTiles)
+        {
+            if (tile.tileName.Contains("Boss"))
+            {
+                if (dir == Vector2Int.up && tile.up) return tile;
+                if (dir == Vector2Int.down && tile.down) return tile;
+                if (dir == Vector2Int.left && tile.left) return tile;
+                if (dir == Vector2Int.right && tile.right) return tile;
+            }
+        }
+        return null;
+    }
+
+    Dictionary<Vector2Int, int> ComputeDepthMap()
+    {
+        Dictionary<Vector2Int, int> depth = new Dictionary<Vector2Int, int>();
+
+        Queue<Vector2Int> queue = new Queue<Vector2Int>();
+
+        Vector2Int start = mainPath[0];
+
+        queue.Enqueue(start);
+        depth[start] = 0;
+
+        while (queue.Count > 0)
+        {
+            Vector2Int pos = queue.Dequeue();
+            int d = depth[pos];
+
+            WFCTile tile = grid[pos.x, pos.y].possibleTiles[0];
+
+            TryVisit(pos, Vector2Int.up, tile, queue, depth, d);
+            TryVisit(pos, Vector2Int.down, tile, queue, depth, d);
+            TryVisit(pos, Vector2Int.left, tile, queue, depth, d);
+            TryVisit(pos, Vector2Int.right, tile, queue, depth, d);
+        }
+
+        return depth;
+    }
+
+    void TryVisit(Vector2Int pos, Vector2Int dir, WFCTile tile,
+    Queue<Vector2Int> queue,
+    Dictionary<Vector2Int, int> depth,
+    int currentDepth)
+    {
+        int nx = pos.x + dir.x;
+        int ny = pos.y + dir.y;
+
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height)
+            return;
+
+        Vector2Int next = new Vector2Int(nx, ny);
+
+        if (depth.ContainsKey(next))
+            return;
+
+        WFCTile neighbor = grid[nx, ny].possibleTiles[0];
+
+        bool canMove = false;
+
+        if (dir == Vector2Int.up)
+            canMove = tile.up && neighbor.down;
+        else if (dir == Vector2Int.down)
+            canMove = tile.down && neighbor.up;
+        else if (dir == Vector2Int.left)
+            canMove = tile.left && neighbor.right;
+        else if (dir == Vector2Int.right)
+            canMove = tile.right && neighbor.left;
+
+        if (!canMove) return;
+
+        depth[next] = currentDepth + 1;
+        queue.Enqueue(next);
+    }
+
+    void AssignRoomTypes()
+    {
+        var depthMap = ComputeDepthMap();
+
+        int maxDepth = 0;
+
+        foreach (var d in depthMap.Values)
+            if (d > maxDepth) maxDepth = d;
+
+        foreach (var kv in depthMap)
+        {
+            Vector2Int pos = kv.Key;
+            int depth = kv.Value;
+
+            var cell = grid[pos.x, pos.y];
+
+            // Start
+            if (pos == mainPath[0])
+            {
+                cell.assignedType = RoomType.Start;
+                continue;
+            }
+
+            // Boss
+            if (pos == mainPath[mainPath.Count - 1])
+            {
+                cell.assignedType = RoomType.Boss;
+                continue;
+            }
+
+            float normalizedDepth = (float)depth / maxDepth;
+
+            float rand = Random.value;
+
+            // 概率规则（你可以调）
+            if (rand < 0.5f * normalizedDepth)
+            {
+                cell.assignedType = RoomType.Combat;
+            }
+            else if (rand < 0.3f)
+            {
+                cell.assignedType = RoomType.Treasure;
+            }
+            else
+            {
+                cell.assignedType = RoomType.Corridor;
+            }
+        }
+    }
+
+    GameObject GetPrefabByType(RoomType type, WFCTile tile)
+    {
+        switch (type)
+        {
+            case RoomType.Start:
+                return startTile.prefab;
+
+            case RoomType.Boss:
+                return bossTile.prefab;
+
+            case RoomType.Combat:
+                return tile.prefab; // or combat prefab
+
+            case RoomType.Treasure:
+                return tile.prefab; // later换 treasure prefab
+
+            default:
+                return tile.prefab;
+        }
     }
 }

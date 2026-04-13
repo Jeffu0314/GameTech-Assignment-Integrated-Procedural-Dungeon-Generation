@@ -13,4 +13,15 @@ public class WFCTile : ScriptableObject
 
     [Range(0f, 1f)]
     public float weight = 1f;
+
+    public enum RoomType
+    {
+        Corridor,
+        Combat,
+        Treasure,
+        Start,
+        Boss
+    }
+
+    public RoomType roomType;
 }

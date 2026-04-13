@@ -19,3 +19,4 @@ MonoBehaviour:
   left: 0
   right: 0
   weight: 0.2
+  roomType: 0

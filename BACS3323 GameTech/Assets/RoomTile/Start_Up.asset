@@ -12,10 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c6eb36fbc5909f34fb75386e5b830132, type: 3}
   m_Name: Start_Up
   m_EditorClassIdentifier: Assembly-CSharp::WFCTile
-  tileName: startTile
+  tileName: Start_Up
   prefab: {fileID: 4175273848875385143, guid: a769784017a1a044e8884bca3ccce9af, type: 3}
   up: 1
   down: 0
   left: 0
   right: 0
   weight: 1
+  roomType: 3

@@ -12,10 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c6eb36fbc5909f34fb75386e5b830132, type: 3}
   m_Name: Boss_Down
   m_EditorClassIdentifier: Assembly-CSharp::WFCTile
-  tileName: bossTile
+  tileName: Boss_Down
   prefab: {fileID: 4298292023036411480, guid: 0a0c263ecf1d51b43b8501cfbe9801a3, type: 3}
   up: 0
   down: 1
   left: 0
   right: 0
   weight: 1
+  roomType: 4

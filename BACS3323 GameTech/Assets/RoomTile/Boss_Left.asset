@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c6eb36fbc5909f34fb75386e5b830132, type: 3}
-  m_Name: Corrider_UpDownLeftRight
+  m_Name: Boss_Left
   m_EditorClassIdentifier: Assembly-CSharp::WFCTile
-  tileName: Corrider_UpDownLeftRight
-  prefab: {fileID: 3605165395536986058, guid: 23a9b742824034f4e8aabf55ab3f4d02, type: 3}
-  up: 1
-  down: 1
+  tileName: Boss_Left
+  prefab: {fileID: 3312530754246999753, guid: 9f040fa2793d57a4dbceaa62c5ca9966, type: 3}
+  up: 0
+  down: 0
   left: 1
-  right: 1
-  weight: 0.05
-  roomType: 0
+  right: 0
+  weight: 1
+  roomType: 4

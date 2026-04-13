@@ -1,19 +1,29 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class DungeonValidator
 {
-    public static bool IsConnected(WFC_Cell[,] grid, int width, int height)
+ 
+    public static bool IsReachable(WFC_Cell[,] grid, int width, int height)
     {
         bool[,] visited = new bool[width, height];
 
         Queue<Vector2Int> queue = new Queue<Vector2Int>();
-        queue.Enqueue(new Vector2Int(0, 0));
+        Vector2Int startPos = FindTile(grid, width, height, WFCTile.RoomType.Start);
+        Vector2Int bossPos = FindTile(grid, width, height, WFCTile.RoomType.Boss);
+
+        queue.Enqueue(startPos);
+        visited[startPos.x, startPos.y] = true;
         visited[0, 0] = true;
 
         while (queue.Count > 0)
         {
             Vector2Int pos = queue.Dequeue();
+
+            // 提前结束（找到 boss）
+            if (pos == bossPos)
+                return true;
+
             WFCTile tile = grid[pos.x, pos.y].possibleTiles[0];
 
             CheckMove(pos, Vector2Int.up, tile, grid, visited, queue, width, height);
@@ -22,16 +32,25 @@ public class DungeonValidator
             CheckMove(pos, Vector2Int.right, tile, grid, visited, queue, width, height);
         }
 
+        return false; // 到不了 boss
+    }
+
+    static Vector2Int FindTile(WFC_Cell[,] grid, int width, int height, WFCTile.RoomType type)
+    {
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                if (!visited[x, y])
-                    return false;
+                var cell = grid[x, y];
+
+                if (cell.possibleTiles.Count == 0) continue;
+
+                if (cell.possibleTiles[0].roomType == type)
+                    return new Vector2Int(x, y);
             }
         }
 
-        return true;
+        return Vector2Int.zero;
     }
 
 
