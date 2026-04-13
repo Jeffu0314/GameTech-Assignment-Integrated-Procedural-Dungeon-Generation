@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using static UnityEditor.PlayerSettings;
 using static WFCTile;
@@ -38,6 +39,7 @@ public class WFCGenerator : MonoBehaviour
             }
         }
     }
+
 
     void Start()
     {
@@ -146,6 +148,7 @@ public class WFCGenerator : MonoBehaviour
         grid = new WFC_Cell[width, height];
 
         mainPath = GenerateMainPath();
+        mainPathSet = new HashSet<Vector2Int>(mainPath);
 
         // 1️⃣ 先全部填满 tile options
         for (int x = 0; x < width; x++)
@@ -246,6 +249,9 @@ public class WFCGenerator : MonoBehaviour
         int nx = pos.x + dir.x;
         int ny = pos.y + dir.y;
 
+        if (mainPathSet.Contains(new Vector2Int(nx, ny)))
+            return;
+
         if (nx < 0 || ny < 0 || nx >= width || ny >= height)
             return;
 
@@ -329,6 +335,31 @@ public class WFCGenerator : MonoBehaviour
         return tiles[0]; // fallback
     }
 
+    WFCTile GetPathTile(Vector2Int prev, Vector2Int current, Vector2Int next)
+    {
+        Vector2Int inDir = current - prev;
+        Vector2Int outDir = next - current;
+
+        foreach (var tile in allTiles)
+        {
+            if (!Match(tile, inDir)) continue;
+            if (!Match(tile, outDir)) continue;
+
+            return tile;
+        }
+
+        return null;
+    }
+
+    bool Match(WFCTile t, Vector2Int dir)
+    {
+        if (dir == Vector2Int.up) return t.down;
+        if (dir == Vector2Int.down) return t.up;
+        if (dir == Vector2Int.left) return t.right;
+        if (dir == Vector2Int.right) return t.left;
+        return false;
+    }
+
     List<Vector2Int> GenerateMainPath()
     {
         List<Vector2Int> path = new List<Vector2Int>();
@@ -355,142 +386,51 @@ public class WFCGenerator : MonoBehaviour
     {
         for (int i = 0; i < mainPath.Count; i++)
         {
-
             Vector2Int current = mainPath[i];
 
-            Vector2Int? prev = i > 0 ? mainPath[i - 1] : (Vector2Int?)null;
-            Vector2Int? next = i < mainPath.Count - 1 ? mainPath[i + 1] : (Vector2Int?)null;
+            WFC_Cell cell = new WFC_Cell(new List<WFCTile>(normalTiles));
 
-            WFCTile chosen = GetPathTile(prev, current, next);
-
-            var cell = new WFC_Cell(new List<WFCTile> { });
-
-            // START
             if (i == 0)
             {
+                Vector2Int next = mainPath[i + 1];
+                Vector2Int dir = next - current;
+
                 cell = new WFC_Cell(new List<WFCTile> { startTile });
-                cell.collapsed = true;
-                cell.locked = true;
-                grid[current.x, current.y] = cell;
             }
-            // BOSS
             else if (i == mainPath.Count - 1)
             {
                 cell = new WFC_Cell(new List<WFCTile> { bossTile });
-                cell.collapsed = true;
-                cell.locked = true;
-                grid[current.x, current.y] = cell;
             }
             else
             {
-                cell = new WFC_Cell(new List<WFCTile>(normalTiles));
-                cell.possibleTiles = new List<WFCTile> { chosen };
-                cell.collapsed = true;
-                cell.locked = true;
-                grid[current.x, current.y] = cell;
+                Vector2Int prev = mainPath[i - 1];
+                Vector2Int next = mainPath[i + 1];
+
+                WFCTile tile = PickDirectionalTile(prev, current);
+                cell = new WFC_Cell(new List<WFCTile> { tile });
             }
 
-            cell = new WFC_Cell(new List<WFCTile> { chosen });
             cell.collapsed = true;
             cell.locked = true;
+
             grid[current.x, current.y] = cell;
-
         }
     }
 
-    WFCTile GetPathTile(Vector2Int? prev, Vector2Int current, Vector2Int? next)
+
+    WFCTile PickDirectionalTile(Vector2Int from, Vector2Int to)
     {
-        WFCTile best = null;
-        List<WFCTile> candidates = new List<WFCTile>();
+        Vector2Int dir = to - from;
 
-        foreach (var tile in allTiles)
+        foreach (var tile in normalTiles)
         {
-            bool valid = true;
-
-            if (prev.HasValue)
-            {
-                Vector2Int dir = prev.Value - current;
-                if (dir == Vector2Int.up && !tile.up) valid = false;
-                if (dir == Vector2Int.down && !tile.down) valid = false;
-                if (dir == Vector2Int.left && !tile.left) valid = false;
-                if (dir == Vector2Int.right && !tile.right) valid = false;
-            }
-
-            if (next.HasValue)
-            {
-                Vector2Int dir = next.Value - current;
-                if (dir == Vector2Int.up && !tile.up) valid = false;
-                if (dir == Vector2Int.down && !tile.down) valid = false;
-                if (dir == Vector2Int.left && !tile.left) valid = false;
-                if (dir == Vector2Int.right && !tile.right) valid = false;
-            }
-
-            if (!valid) continue;
-
-            int openings = 0;
-            if (tile.up) openings++;
-            if (tile.down) openings++;
-            if (tile.left) openings++;
-            if (tile.right) openings++;
-
-            if (openings != 2) continue;
-
-            if (valid)
-                candidates.Add(tile);
+            if (dir == Vector2Int.up && tile.down && tile.up) return tile;
+            if (dir == Vector2Int.down && tile.up && tile.down) return tile;
+            if (dir == Vector2Int.left && tile.right && tile.left) return tile;
+            if (dir == Vector2Int.right && tile.left && tile.right) return tile;
         }
 
-        if (candidates.Count > 0)
-            return candidates[Random.Range(0, candidates.Count)];
-
-        if (best != null)
-            return best;
-
-        Debug.LogError("No path tile found!");
-        Debug.Log("Candidates: " + candidates.Count);
-        return allTiles[0];
-    }
-
-    WFCTile GetTileMatchingDirection(Vector2Int dir)
-    {
-        foreach (var tile in allTiles)
-        {
-            if (dir == Vector2Int.up && tile.up) return tile;
-            if (dir == Vector2Int.down && tile.down) return tile;
-            if (dir == Vector2Int.left && tile.left) return tile;
-            if (dir == Vector2Int.right && tile.right) return tile;
-        }
-
-        return startTile;
-    }
-
-    WFCTile GetStartTile(Vector2Int dir)
-    {
-        foreach (var tile in allTiles)
-        {
-            if (tile.tileName.Contains("Start"))
-            {
-                if (dir == Vector2Int.up && tile.up) return tile;
-                if (dir == Vector2Int.down && tile.down) return tile;
-                if (dir == Vector2Int.left && tile.left) return tile;
-                if (dir == Vector2Int.right && tile.right) return tile;
-            }
-        }
-        return null;
-    }
-
-    WFCTile GetBossTile(Vector2Int dir)
-    {
-        foreach (var tile in allTiles)
-        {
-            if (tile.tileName.Contains("Boss"))
-            {
-                if (dir == Vector2Int.up && tile.up) return tile;
-                if (dir == Vector2Int.down && tile.down) return tile;
-                if (dir == Vector2Int.left && tile.left) return tile;
-                if (dir == Vector2Int.right && tile.right) return tile;
-            }
-        }
-        return null;
+        return normalTiles[0];
     }
 
     Dictionary<Vector2Int, int> ComputeDepthMap()
