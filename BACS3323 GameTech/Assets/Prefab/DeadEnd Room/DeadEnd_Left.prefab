@@ -234,6 +234,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5001518379807115778}
+  - component: {fileID: 1323667310910389002}
   m_Layer: 0
   m_Name: DeadEnd_Left
   m_TagString: Untagged
@@ -250,7 +251,7 @@ Transform:
   m_GameObject: {fileID: 6955593714811884094}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 11.351658, y: 3.0866094, z: 30.295546}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -260,6 +261,29 @@ Transform:
   - {fileID: 7550626677549803558}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1323667310910389002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6955593714811884094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 90a2e6c5d00306746ad0bd2d262abbb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Tile
+  upNeighbours: []
+  rightNeighbours: []
+  downNeighbours: []
+  leftNeighbours:
+  - {fileID: 2975526104515512463, guid: d0959608746a49c4e8bac6b2b33b5c47, type: 3}
+  - {fileID: -756591888198823649, guid: 297d0a90c0e4cc941b98c972007921b6, type: 3}
+  - {fileID: 2391743193973372492, guid: 23a9b742824034f4e8aabf55ab3f4d02, type: 3}
+  - {fileID: -2816079876858475081, guid: e8362f0170f5d934bb8c7bf9cf80eabf, type: 3}
+  - {fileID: 4470490821537926310, guid: fee452066797caf428857b55af44f206, type: 3}
+  - {fileID: 5051255083094910700, guid: efecfadc4f49fee42b2c8f14c402dfaa, type: 3}
+  - {fileID: -666797933176373384, guid: 658ebe2b01e47cf46a291b6969474893, type: 3}
 --- !u!1 &7449021391152807075
 GameObject:
   m_ObjectHideFlags: 0
