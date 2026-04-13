@@ -19,6 +19,7 @@ public class WaveFunctionCollapse : MonoBehaviour
 
     private void Awake()
     {
+        GenerateAdjacencyRules();
         gridComponenets = new List<Cell>();
         InitializeGrid();
 
@@ -84,7 +85,7 @@ public class WaveFunctionCollapse : MonoBehaviour
         {
             for(int x = 0; x < dimensions; x++) 
             {
-                var index = y + x * dimensions;
+                var index = x + y * dimensions;
 
                 if (gridComponenets[index].collapsed) 
                 {
@@ -116,13 +117,13 @@ public class WaveFunctionCollapse : MonoBehaviour
 
                     if (x < dimensions - 1)
                     {
-                        Cell left = gridComponenets[x + 1 + y * dimensions];
+                        Cell right = gridComponenets[x + 1 + y * dimensions];
                         List<Tile> validOptions = new List<Tile>();
 
-                        foreach (Tile possibleOptions in left.tileOptions)
+                        foreach (Tile possibleOptions in right.tileOptions)
                         {
                             var validOption = Array.FindIndex(tileObjects, obj => obj == possibleOptions);
-                            var valid = tileObjects[validOption].rightNeighbours;
+                            var valid = tileObjects[validOption].leftNeighbours;
 
                             validOptions = validOptions.Concat(valid).ToList();
                         }
@@ -148,13 +149,13 @@ public class WaveFunctionCollapse : MonoBehaviour
 
                     if (x > 0)
                     {
-                        Cell right = gridComponenets[x - 1 + y * dimensions];
+                        Cell left = gridComponenets[x - 1 + y * dimensions];
                         List<Tile> validOptions = new List<Tile>();
 
-                        foreach (Tile possibleOptions in right.tileOptions)
+                        foreach (Tile possibleOptions in left.tileOptions)
                         {
                             var validOption = Array.FindIndex(tileObjects, obj => obj == possibleOptions);
-                            var valid = tileObjects[validOption].leftNeighbours;
+                            var valid = tileObjects[validOption].rightNeighbours;
 
                             validOptions = validOptions.Concat(valid).ToList();
                         }
@@ -193,6 +194,37 @@ public class WaveFunctionCollapse : MonoBehaviour
             {
                 optionList.RemoveAt(x);
             }
+        }
+    }
+
+    void GenerateAdjacencyRules()
+    {
+        foreach (Tile tile in tileObjects)
+        {
+            List<Tile> upList = new List<Tile>();
+            List<Tile> downList = new List<Tile>();
+            List<Tile> leftList = new List<Tile>();
+            List<Tile> rightList = new List<Tile>();
+
+            foreach (Tile other in tileObjects)
+            {
+                if (tile.up == other.down)
+                    upList.Add(other);
+
+                if (tile.down == other.up)
+                    downList.Add(other);
+
+                if (tile.left == other.right)
+                    leftList.Add(other);
+
+                if (tile.right == other.left)
+                    rightList.Add(other);
+            }
+
+            tile.upNeighbours = upList.ToArray();
+            tile.downNeighbours = downList.ToArray();
+            tile.leftNeighbours = leftList.ToArray();
+            tile.rightNeighbours = rightList.ToArray();
         }
     }
 }
