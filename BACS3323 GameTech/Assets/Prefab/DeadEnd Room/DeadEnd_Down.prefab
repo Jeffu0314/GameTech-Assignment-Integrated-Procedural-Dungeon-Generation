@@ -160,17 +160,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 90a2e6c5d00306746ad0bd2d262abbb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Tile
+  up: 0
+  down: 1
+  left: 0
+  right: 0
   upNeighbours: []
   rightNeighbours: []
   downNeighbours:
-  - {fileID: -8710863608555236730, guid: 599ca0ad4953c19498c0f675b4e62b9e, type: 3}
   - {fileID: 2391743193973372492, guid: 23a9b742824034f4e8aabf55ab3f4d02, type: 3}
+  - {fileID: -8710863608555236730, guid: 599ca0ad4953c19498c0f675b4e62b9e, type: 3}
   - {fileID: -6072665395695870650, guid: e4c8347fb755ab641b32e6e59a65f3d2, type: 3}
   - {fileID: -2816079876858475081, guid: e8362f0170f5d934bb8c7bf9cf80eabf, type: 3}
+  - {fileID: -6613247293885200912, guid: 3ca70fdb625c54e4d9f8dba3d344dd61, type: 3}
   - {fileID: 8553540933126891365, guid: 5f379bb59d5e50742979b778b58daca5, type: 3}
   - {fileID: 5051255083094910700, guid: efecfadc4f49fee42b2c8f14c402dfaa, type: 3}
   - {fileID: -666797933176373384, guid: 658ebe2b01e47cf46a291b6969474893, type: 3}
   leftNeighbours: []
+  tileType: 6
+  roomType: 1
+  allowedRoomTypes: 
 --- !u!1 &3017875891237342049
 GameObject:
   m_ObjectHideFlags: 0

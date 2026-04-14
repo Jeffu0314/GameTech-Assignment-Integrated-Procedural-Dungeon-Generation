@@ -385,6 +385,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 90a2e6c5d00306746ad0bd2d262abbb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Tile
+  up: 1
+  down: 0
+  left: 0
+  right: 0
   upNeighbours:
   - {fileID: 1279538057254705626, guid: 0a0c263ecf1d51b43b8501cfbe9801a3, type: 3}
   - {fileID: 4508535818671484338, guid: c2abc144faa77c446a86ef4c85566a43, type: 3}
@@ -397,6 +401,9 @@ MonoBehaviour:
   rightNeighbours: []
   downNeighbours: []
   leftNeighbours: []
+  tileType: 0
+  roomType: 0
+  allowedRoomTypes: 
 --- !u!1 &5569674710524233863
 GameObject:
   m_ObjectHideFlags: 0

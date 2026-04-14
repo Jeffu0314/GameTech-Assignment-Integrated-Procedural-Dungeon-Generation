@@ -1,9 +1,11 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class Cell : MonoBehaviour
 {
     public bool collapsed;
     public Tile[] tileOptions;
+    public bool isMainPath;
+    public Vector2Int gridPos;
 
     public void CreateCell(bool collapseState, Tile[] tiles)
     {
@@ -15,4 +17,6 @@ public class Cell : MonoBehaviour
     {
         tileOptions = tiles;
     }
+
+
 }
