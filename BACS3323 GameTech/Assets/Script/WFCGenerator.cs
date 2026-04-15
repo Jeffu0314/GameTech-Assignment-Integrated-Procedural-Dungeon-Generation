@@ -267,7 +267,7 @@ public class WFCGenerator
             }
             else
             {
-                if (count == dirs.Count)
+                if (count >= dirs.Count)
                     return t;
             }
         }
