@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEngine;
 using static Tile;
 
-public class WaveFunctionCollapseBT : MonoBehaviour
+public class WFCGenerate
 {
     static readonly Vector2Int[] directions =
     {
@@ -45,8 +45,11 @@ public class WaveFunctionCollapseBT : MonoBehaviour
     Stack<Snapshot> snapshots = new();
     Stack<Decision> decisions = new();
 
-    void Awake()
+    public Dictionary<Vector2Int, Tile> Generate(int size, int seed)
     {
+        this.dimensions = size;
+        Random.InitState(seed);
+
         bool success = false;
 
         for (int attempt = 0; attempt < 20 && !success; attempt++)
@@ -56,18 +59,12 @@ public class WaveFunctionCollapseBT : MonoBehaviour
             InitGrid();
             GenerateAdjacency();
             GenerateMainPath();
-
             CollapseMainPath();
 
             success = SolveWithBacktracking();
-
-            Debug.Log($"Attempt {attempt + 1} result: {success}");
         }
 
-        if (success)
-            Spawn();
-        else
-            Debug.LogError("FAILED GENERATION");
+        return placed; // ⭐ 返回数据，不是Spawn
     }
 
     // =========================
@@ -76,7 +73,6 @@ public class WaveFunctionCollapseBT : MonoBehaviour
     void ResetAll()
     {
         foreach (var c in grid)
-            if (c != null) Destroy(c.gameObject);
 
         grid.Clear();
         mainPath.Clear();
