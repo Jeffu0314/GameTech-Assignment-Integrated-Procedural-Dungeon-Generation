@@ -234,7 +234,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5001518379807115778}
-  - component: {fileID: 1323667310910389002}
   m_Layer: 0
   m_Name: DeadEnd_Left
   m_TagString: Untagged
@@ -261,29 +260,6 @@ Transform:
   - {fileID: 7550626677549803558}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1323667310910389002
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6955593714811884094}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 90a2e6c5d00306746ad0bd2d262abbb0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Tile
-  up: 0
-  down: 0
-  left: 1
-  right: 0
-  upNeighbours: []
-  rightNeighbours: []
-  downNeighbours: []
-  leftNeighbours: []
-  tileType: 6
-  roomType: 1
-  allowedRoomTypes: 
 --- !u!1 &7449021391152807075
 GameObject:
   m_ObjectHideFlags: 0

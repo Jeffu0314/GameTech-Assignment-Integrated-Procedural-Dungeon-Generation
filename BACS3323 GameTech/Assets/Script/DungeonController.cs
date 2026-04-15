@@ -42,14 +42,14 @@ public class DungeonController : MonoBehaviour
     {
         foreach (var kv in layout)
         {
-            if (kv.Value == null)
+            if (kv.Value == null || kv.Value.prefab == null)
             {
-                Debug.LogError($"Null tile at {kv.Key}");
+                Debug.LogError($"Missing tile or prefab at {kv.Key}");
                 continue;
             }
 
             Vector3 pos = new Vector3(kv.Key.x * cellSpacing, 0, kv.Key.y * cellSpacing);
-            Instantiate(kv.Value, pos, Quaternion.identity);
+            Instantiate(kv.Value.prefab, pos, Quaternion.identity);
         }
     }
 }

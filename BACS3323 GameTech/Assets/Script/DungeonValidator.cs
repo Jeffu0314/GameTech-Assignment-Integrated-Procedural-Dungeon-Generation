@@ -14,7 +14,7 @@ public class DungeonValidator
         var visited = new HashSet<Vector2Int>();
         var q = new Queue<Vector2Int>();
 
-        // ⭐ 找 Start
+        // 找 Start
         var start = placed.First(p => p.Value.tileType == Tile.TileType.Start).Key;
 
         q.Enqueue(start);

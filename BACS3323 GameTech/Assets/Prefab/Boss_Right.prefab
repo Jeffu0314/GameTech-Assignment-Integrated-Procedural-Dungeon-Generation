@@ -346,7 +346,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1528750186588478244}
-  - component: {fileID: 3791378268096711990}
   m_Layer: 0
   m_Name: Boss_Right
   m_TagString: Untagged
@@ -373,37 +372,6 @@ Transform:
   - {fileID: 3010733501147585240}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3791378268096711990
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6525830126885882350}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 90a2e6c5d00306746ad0bd2d262abbb0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Tile
-  up: 0
-  down: 0
-  left: 0
-  right: 1
-  upNeighbours: []
-  rightNeighbours:
-  - {fileID: 4508535818671484338, guid: c2abc144faa77c446a86ef4c85566a43, type: 3}
-  - {fileID: -756591888198823649, guid: 297d0a90c0e4cc941b98c972007921b6, type: 3}
-  - {fileID: 2391743193973372492, guid: 23a9b742824034f4e8aabf55ab3f4d02, type: 3}
-  - {fileID: -6072665395695870650, guid: e4c8347fb755ab641b32e6e59a65f3d2, type: 3}
-  - {fileID: 6304377583176033374, guid: 3c64a22482971d942b3c9c43fd5a181b, type: 3}
-  - {fileID: 4470490821537926310, guid: fee452066797caf428857b55af44f206, type: 3}
-  - {fileID: 8553540933126891365, guid: 5f379bb59d5e50742979b778b58daca5, type: 3}
-  - {fileID: -666797933176373384, guid: 658ebe2b01e47cf46a291b6969474893, type: 3}
-  downNeighbours: []
-  leftNeighbours: []
-  tileType: 1
-  roomType: 0
-  allowedRoomTypes: 
 --- !u!1 &7486093951472615419
 GameObject:
   m_ObjectHideFlags: 0

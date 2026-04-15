@@ -121,7 +121,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3554042648579135886}
-  - component: {fileID: -6613247293885200912}
   m_Layer: 0
   m_Name: DeadEnd_Up
   m_TagString: Untagged
@@ -148,29 +147,6 @@ Transform:
   - {fileID: 6628590425760695200}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &-6613247293885200912
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1955832107570285157}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 90a2e6c5d00306746ad0bd2d262abbb0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Tile
-  up: 1
-  down: 0
-  left: 0
-  right: 0
-  upNeighbours: []
-  rightNeighbours: []
-  downNeighbours: []
-  leftNeighbours: []
-  tileType: 6
-  roomType: 3
-  allowedRoomTypes: 
 --- !u!1 &2926406403603572859
 GameObject:
   m_ObjectHideFlags: 0

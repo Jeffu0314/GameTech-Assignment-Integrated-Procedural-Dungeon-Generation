@@ -57,7 +57,6 @@ public class WFCGenerator
             ResetAll();
 
             InitGrid();
-            GenerateAdjacency();
             GenerateMainPath();
             CollapseMainPath();
 
@@ -95,20 +94,6 @@ public class WFCGenerator
                 c.tileOptions = tileObjects.ToArray();
                 grid.Add(c);
             }
-        }
-    }
-
-    // =========================
-    // ADJACENCY
-    // =========================
-    void GenerateAdjacency()
-    {
-        foreach (var t in tileObjects)
-        {
-            t.upNeighbours = tileObjects.Where(o => t.up && o.down).ToArray();
-            t.downNeighbours = tileObjects.Where(o => t.down && o.up).ToArray();
-            t.leftNeighbours = tileObjects.Where(o => t.left && o.right).ToArray();
-            t.rightNeighbours = tileObjects.Where(o => t.right && o.left).ToArray();
         }
     }
 
@@ -348,27 +333,37 @@ public class WFCGenerator
                 var cell = GetCell(next);
                 if (cell.collapsed) continue;
 
-                int before = cell.tileOptions.Length;
-
                 if (!placed.ContainsKey(cur)) continue;
 
                 var source = placed[cur];
 
-                var valid = cell.tileOptions.Where(t =>
+                int before = cell.tileOptions.Length;
+                
+                List<Tile> valid = new();
+
+                foreach (var t in cell.tileOptions)
                 {
-                    if (dir == Vector2Int.up) return source.upNeighbours.Contains(t);
-                    if (dir == Vector2Int.down) return source.downNeighbours.Contains(t);
-                    if (dir == Vector2Int.left) return source.leftNeighbours.Contains(t);
-                    if (dir == Vector2Int.right) return source.rightNeighbours.Contains(t);
+                    bool ok = false;
+
+                    if (dir == Vector2Int.up)
+                        ok = source.up && t.down;
+                    else if (dir == Vector2Int.down)
+                        ok = source.down && t.up;
+                    else if (dir == Vector2Int.left)
+                        ok = source.left && t.right;
+                    else if (dir == Vector2Int.right)
+                        ok = source.right && t.left;
+
+                    if (ok)
+                        valid.Add(t);
+                }
+
+                if (valid.Count == 0)
                     return false;
-                }).ToArray();
 
-                if (valid.Length == 0)
-                    return false;
+                cell.tileOptions = valid.ToArray();
 
-                cell.tileOptions = valid;
-
-                if (valid.Length < before)
+                if (valid.Count < before)
                     q.Enqueue(next);
             }
         }
@@ -389,6 +384,10 @@ public class WFCGenerator
         if (decisions.Count > 0)
         {
             var last = decisions.Pop();
+
+            if (last.remainingOptions.Count == 0)
+                return Backtrack();
+
             last.remainingOptions.RemoveAt(0);
 
             if (last.remainingOptions.Count == 0)
@@ -424,13 +423,26 @@ public class WFCGenerator
 
         var s = snapshots.Pop();
 
+        placed = new Dictionary<Vector2Int, Tile>(s.placedSnapshot);
+
         foreach (var c in grid)
         {
+            c.collapsed = false; // ⭐必须恢复
+
             if (s.optionsSnapshot.ContainsKey(c.gridPos))
-                c.tileOptions = s.optionsSnapshot[c.gridPos];
+                c.tileOptions = s.optionsSnapshot[c.gridPos].ToArray();
         }
 
-        placed = new Dictionary<Vector2Int, Tile>(s.placedSnapshot);
+        // 重新标记 collapsed（非常重要）
+        foreach (var p in placed)
+        {
+            var cell = GetCell(p.Key);
+            if (cell != null)
+            {
+                cell.collapsed = true;
+                cell.tileOptions = new Tile[] { p.Value };
+            }
+        }
     }
 
     // =========================
@@ -452,8 +464,14 @@ public class WFCGenerator
 
     Cell GetCell(Vector2Int p)
     {
+        if (!InBounds(p))
+        {
+            Debug.LogError($"Out of bounds: {p}");
+            return null;
+        }
+
         return grid[p.x + p.y * dimensions];
     }
 
-    
+
 }
