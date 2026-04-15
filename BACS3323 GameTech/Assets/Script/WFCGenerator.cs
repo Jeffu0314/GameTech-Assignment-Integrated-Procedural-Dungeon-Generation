@@ -21,11 +21,13 @@ public class WFCGenerator
     public Tile bossTile;
 
     List<Cell> grid = new();
-    List<Vector2Int> mainPath = new();
+    public List<Vector2Int> mainPath = new();
     Dictionary<Vector2Int, Tile> placed = new();
 
     Vector2Int startPos;
     Vector2Int bossPos;
+
+    int iteration = 0;
 
     // =========================
     // BACKTRACK STACK
@@ -62,6 +64,7 @@ public class WFCGenerator
 
             success = SolveWithBacktracking();
         }
+
 
         return placed; // ⭐ 返回数据，不是Spawn
     }
@@ -107,10 +110,12 @@ public class WFCGenerator
         mainPath = GeneratePathBFS(startPos, bossPos);
     }
 
+    // 将主路径上的格子直接坍缩为特定 Tile，保证主路径正确
     void CollapseMainPath()
     {
         for (int i = 0; i < mainPath.Count; i++)
         {
+            Debug.Log($"Collapsing main path cell {i}/{mainPath.Count}: {mainPath[i]}");
             var pos = mainPath[i];
 
             if (!InBounds(pos))
@@ -123,6 +128,7 @@ public class WFCGenerator
 
             Tile t;
 
+            // Start 和 Boss 直接放特定 Tile，其他格子通过 PickPathTile 挑选满足连接要求的 Tile
             if (i == 0)
                 t = startTile;
             else if (i == mainPath.Count - 1)
@@ -182,6 +188,7 @@ public class WFCGenerator
         return valid[Random.Range(0, valid.Count)];
     }
 
+    // 随机放置 Start 和 Boss，保证它们不重叠
     void PickStartAndBoss()
     {
         startPos = new Vector2Int(
@@ -199,6 +206,7 @@ public class WFCGenerator
         } while (bossPos == startPos);
     }
 
+    // BFS 寻路，生成主路径
     List<Vector2Int> GeneratePathBFS(Vector2Int start, Vector2Int goal)
     {
         Queue<Vector2Int> q = new();
@@ -211,24 +219,30 @@ public class WFCGenerator
         while (q.Count > 0)
         {
             var cur = q.Dequeue();
+            Debug.Log("BFS visiting: " + cur);
 
             if (cur == goal)
                 break;
 
             foreach (var dir in directions)
             {
+                // 这里不需要检查 placed，因为主路径生成时格子都是空的
                 var next = cur + dir;
 
+                Debug.Log($"Checking neighbor: {next} from {cur}");
                 if (!InBounds(next)) continue;
+
+                Debug.Log($"In bounds: {next}");
                 if (visited.Contains(next)) continue;
 
+                Debug.Log($"Adding to queue: {next}");
                 visited.Add(next);
                 parent[next] = cur;
                 q.Enqueue(next);
             }
         }
 
-        // reconstruct path
+        // 从 goal 回溯到 start
         List<Vector2Int> path = new();
 
         if (!parent.ContainsKey(goal))
@@ -257,6 +271,14 @@ public class WFCGenerator
     {
         while (true)
         {
+            iteration++;
+            Debug.Log($"WFC iteration = {iteration}");
+            if (iteration > dimensions * dimensions * 10)
+            {
+                Debug.LogError("WFC failed - too many iterations");
+                return false;
+            }
+
             Cell cell = GetLowestEntropyCell();
 
             if (cell == null)
@@ -379,6 +401,12 @@ public class WFCGenerator
         if (snapshots.Count == 0)
             return false;
 
+        if (decisions.Count > 500)
+        {
+            Debug.LogError("Too many backtracks");
+            return false;
+        }
+
         RestoreSnapshot();
 
         if (decisions.Count > 0)
@@ -404,6 +432,7 @@ public class WFCGenerator
     // =========================
     // SNAPSHOT SYSTEM
     // =========================
+    // 保存当前状态到快照栈
     void SaveSnapshot()
     {
         Snapshot s = new Snapshot();
@@ -417,6 +446,7 @@ public class WFCGenerator
         snapshots.Push(s);
     }
 
+    // 恢复到上一个快照状态
     void RestoreSnapshot()
     {
         if (snapshots.Count == 0) return;
@@ -448,6 +478,7 @@ public class WFCGenerator
     // =========================
     // UTIL
     // =========================
+    // 获取最低熵的格子（未坍缩，选项最少）
     Cell GetLowestEntropyCell()
     {
         return grid
@@ -456,12 +487,14 @@ public class WFCGenerator
             .FirstOrDefault();
     }
 
+    // 检查坐标是否在网格内
     bool InBounds(Vector2Int p)
     {
         return p.x >= 0 && p.x < dimensions &&
                p.y >= 0 && p.y < dimensions;
     }
 
+    // 获取格子对象
     Cell GetCell(Vector2Int p)
     {
         if (!InBounds(p))

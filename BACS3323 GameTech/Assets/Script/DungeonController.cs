@@ -5,7 +5,7 @@ public class DungeonController : MonoBehaviour
 {
     [Header("WFC Settings")]
     public int size = 8;
-    public int seed = 123;
+    public int seed = 100;
 
     [Header("Difficulty")]
     [Range(0f, 1f)]
@@ -16,6 +16,7 @@ public class DungeonController : MonoBehaviour
     public Tile startTile;
     public Tile bossTile;
     public float cellSpacing = 10f;
+
 
     void Start()
     {
