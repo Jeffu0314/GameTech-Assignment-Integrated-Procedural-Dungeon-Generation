@@ -32,7 +32,7 @@ public class DungeonController : MonoBehaviour
         wfc.startTile = startTile;
         wfc.bossTile = bossTile;
 
-        var result = wfc.Generate(size, seed);
+        var result = wfc.Generate(size, seed, difficulty);
 
         Debug.Log("Generated: " + result.Count);
 

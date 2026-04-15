@@ -413,20 +413,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonController
   size: 5
-  seed: 100
+  seed: 103
   difficulty: 0.5
   tileObjects:
   - prefab: {fileID: 69801886974408031, guid: c2abc144faa77c446a86ef4c85566a43, type: 3}
-    up: 0
-    down: 1
-    left: 1
-    right: 0
-    tileType: 3
-  - prefab: {fileID: 863888527111319945, guid: d0959608746a49c4e8bac6b2b33b5c47, type: 3}
-    up: 0
-    down: 1
+    up: 1
+    down: 0
     left: 0
     right: 1
+    tileType: 3
+  - prefab: {fileID: 863888527111319945, guid: d0959608746a49c4e8bac6b2b33b5c47, type: 3}
+    up: 1
+    down: 0
+    left: 1
+    right: 0
     tileType: 3
   - prefab: {fileID: 7584296409556671223, guid: 297d0a90c0e4cc941b98c972007921b6, type: 3}
     up: 0
@@ -447,16 +447,16 @@ MonoBehaviour:
     right: 1
     tileType: 5
   - prefab: {fileID: 1015753925283207455, guid: e4c8347fb755ab641b32e6e59a65f3d2, type: 3}
-    up: 1
-    down: 0
-    left: 1
-    right: 0
-    tileType: 3
-  - prefab: {fileID: 7955449656783163313, guid: e8362f0170f5d934bb8c7bf9cf80eabf, type: 3}
-    up: 1
-    down: 0
+    up: 0
+    down: 1
     left: 0
     right: 1
+    tileType: 3
+  - prefab: {fileID: 7955449656783163313, guid: e8362f0170f5d934bb8c7bf9cf80eabf, type: 3}
+    up: 0
+    down: 1
+    left: 1
+    right: 0
     tileType: 3
   - prefab: {fileID: 2583320914683295263, guid: 3d5bc8aae1d1db34c96fb8b200211b91, type: 3}
     up: 0
@@ -508,16 +508,16 @@ MonoBehaviour:
     tileType: 4
   startTile:
     prefab: {fileID: 4175273848875385143, guid: a769784017a1a044e8884bca3ccce9af, type: 3}
-    up: 1
-    down: 0
+    up: 0
+    down: 1
     left: 0
     right: 0
     tileType: 0
   bossTile:
-    prefab: {fileID: 3055644843219296806, guid: 5cc39b23265acc24083390b76481be5a, type: 3}
-    up: 0
+    prefab: {fileID: 4298292023036411480, guid: 0a0c263ecf1d51b43b8501cfbe9801a3, type: 3}
+    up: 1
     down: 0
-    left: 1
+    left: 0
     right: 0
     tileType: 1
   cellSpacing: 10

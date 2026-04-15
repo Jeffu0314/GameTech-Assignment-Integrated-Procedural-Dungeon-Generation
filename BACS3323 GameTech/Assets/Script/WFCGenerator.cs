@@ -24,6 +24,9 @@ public class WFCGenerator
     public List<Vector2Int> mainPath = new();
     Dictionary<Vector2Int, Tile> placed = new();
 
+    HashSet<Vector2Int> branchCells = new();
+    List<List<Vector2Int>> branches = new();
+
     Vector2Int startPos;
     Vector2Int bossPos;
 
@@ -47,7 +50,7 @@ public class WFCGenerator
     Stack<Snapshot> snapshots = new();
     Stack<Decision> decisions = new();
 
-    public Dictionary<Vector2Int, Tile> Generate(int size, int seed)
+    public Dictionary<Vector2Int, Tile> Generate(int size, int seed, float difficulty)
     {
         this.dimensions = size;
         Random.InitState(seed);
@@ -62,6 +65,16 @@ public class WFCGenerator
 
             InitGrid();
             GenerateMainPath();
+
+            int branchCount = Mathf.RoundToInt(difficulty * 5);
+            int branchLength = Mathf.RoundToInt(Mathf.Lerp(2, 6, difficulty));
+
+            GenerateBranches(branchCount, branchLength);
+
+            if (!CollapseMainPath())
+                continue;
+
+            CollapseBranches();
 
             // ⭐ 主路径失败 → 直接 retry
             if (!CollapseMainPath())
@@ -148,7 +161,42 @@ public class WFCGenerator
     {
         PickStartAndBoss();
 
-        mainPath = GeneratePathBFS(startPos, bossPos);
+        mainPath = new List<Vector2Int>();
+        HashSet<Vector2Int> visited = new();
+
+        Vector2Int current = startPos;
+        mainPath.Add(current);
+        visited.Add(current);
+
+        int targetLength = Random.Range(dimensions * 2, dimensions * 3);
+
+        while (current != bossPos || mainPath.Count < targetLength)
+        {
+            var neighbors = directions
+                .Select(d => current + d)
+                .Where(p => InBounds(p) && !visited.Contains(p))
+                .ToList();
+
+            if (neighbors.Count == 0)
+                break;
+
+            // bias toward boss（关键）
+            neighbors = neighbors
+                .OrderBy(p => Vector2Int.Distance(p, bossPos))
+                .ToList();
+
+            current = neighbors[Random.Range(0, Mathf.Min(2, neighbors.Count))];
+
+            mainPath.Add(current);
+            visited.Add(current);
+
+            // 防止死循环
+            if (mainPath.Count > dimensions * dimensions)
+                break;
+        }
+
+        if (!mainPath.Contains(bossPos))
+            mainPath.Add(bossPos);
     }
 
     // 将主路径上的格子直接坍缩为特定 Tile，保证主路径正确
@@ -174,7 +222,7 @@ public class WFCGenerator
             else if (i == mainPath.Count - 1)
                 t = FixTileToMatch(bossTile, requiredDirs);
             else
-                t = FindExactMatch(requiredDirs);
+                t = FindMatch(requiredDirs, false);
 
             if (t == null)
             {
@@ -199,42 +247,42 @@ public class WFCGenerator
         return null;
     }
 
-    Tile FindExactMatch(List<Vector2Int> dirs)
+    Tile FindMatch(List<Vector2Int> dirs, bool allowBranch)
     {
         foreach (var t in tileObjects)
         {
-            if (t.tileType == Tile.TileType.Start ||
-                t.tileType == Tile.TileType.Boss)
+            if (t.tileType == TileType.Start ||
+                t.tileType == TileType.Boss)
                 continue;
 
-            // 必须包含所有 requiredDirs
-            bool valid = true;
+            if (!dirs.All(d => t.HasConnection(d)))
+                continue;
 
-            foreach (var d in dirs)
+            int count = CountConnections(t);
+
+            if (allowBranch)
             {
-                if (!t.HasConnection(d))
-                {
-                    valid = false;
-                    break;
-                }
+                if (count >= dirs.Count)
+                    return t;
             }
-
-            if (!valid) continue;
-
-            // 不能多连接（避免分叉破坏主路径）
-            int count = 0;
-            if (t.up) count++;
-            if (t.down) count++;
-            if (t.left) count++;
-            if (t.right) count++;
-
-            if (count < dirs.Count)
-                continue;
-
-            return t;
+            else
+            {
+                if (count == dirs.Count)
+                    return t;
+            }
         }
 
         return null;
+    }
+
+    int CountConnections(Tile t)
+    {
+        int c = 0;
+        if (t.up) c++;
+        if (t.down) c++;
+        if (t.left) c++;
+        if (t.right) c++;
+        return c;
     }
 
     // 随机放置 Start 和 Boss，保证它们不重叠
@@ -255,62 +303,76 @@ public class WFCGenerator
         } while (bossPos == startPos);
     }
 
-    // BFS 寻路，生成主路径
-    List<Vector2Int> GeneratePathBFS(Vector2Int start, Vector2Int goal)
+    // =========================
+    // BRANCHES
+    // =========================
+
+    void GenerateBranches(int branchCount = 3, int maxLength = 4)
     {
-        Queue<Vector2Int> q = new();
-        Dictionary<Vector2Int, Vector2Int> parent = new();
-        HashSet<Vector2Int> visited = new();
-
-        q.Enqueue(start);
-        visited.Add(start);
-
-        while (q.Count > 0)
+        for (int i = 0; i < branchCount; i++)
         {
-            var cur = q.Dequeue();
-            Debug.Log("BFS visiting: " + cur);
+            var start = mainPath[Random.Range(1, mainPath.Count - 2)];
 
-            if (cur == goal)
-                break;
+            List<Vector2Int> branch = new();
+            Vector2Int current = start;
 
+            for (int l = 0; l < maxLength; l++)
+            {
+                var neighbors = directions
+                    .Select(d => current + d)
+                    .Where(p => InBounds(p) &&
+                                !mainPath.Contains(p) &&
+                                !branchCells.Contains(p))
+                    .ToList();
+
+                if (neighbors.Count == 0)
+                    break;
+
+                var next = neighbors[Random.Range(0, neighbors.Count)];
+
+                branch.Add(next);
+                branchCells.Add(next);
+
+                current = next;
+            }
+
+            if (branch.Count > 0)
+                branches.Add(branch);
+        }
+    }
+
+    void CollapseBranches()
+    {
+        foreach (var pos in branchCells)
+        {
+            var cell = GetCell(pos);
+
+            List<Vector2Int> requiredDirs = new();
+
+            // 找所有邻居连接（主路径 or branch）
             foreach (var dir in directions)
             {
-                // 这里不需要检查 placed，因为主路径生成时格子都是空的
-                var next = cur + dir;
+                var neighbor = pos + dir;
 
-                Debug.Log($"Checking neighbor: {next} from {cur}");
-                if (!InBounds(next)) continue;
-
-                Debug.Log($"In bounds: {next}");
-                if (visited.Contains(next)) continue;
-
-                Debug.Log($"Adding to queue: {next}");
-                visited.Add(next);
-                parent[next] = cur;
-                q.Enqueue(next);
+                if (placed.ContainsKey(neighbor))
+                {
+                    if (placed[neighbor].HasConnection(-dir))
+                        requiredDirs.Add(dir);
+                }
             }
+
+            var t = FindMatch(requiredDirs, true);
+
+            if (t == null)
+            {
+                Debug.LogError("❌ Branch collapse failed");
+                continue;
+            }
+
+            cell.collapsed = true;
+            cell.tileOptions = new Tile[] { t };
+            placed[pos] = t;
         }
-
-        // 从 goal 回溯到 start
-        List<Vector2Int> path = new();
-
-        if (!parent.ContainsKey(goal))
-        {
-            Debug.LogError("No path found!");
-            return path;
-        }
-
-        Vector2Int p = goal;
-        path.Add(p);
-
-        while (p != start)
-        {
-            p = parent[p];
-            path.Add(p);
-        }
-
-        path.Reverse();
-        return path;
     }
 
     // =========================
