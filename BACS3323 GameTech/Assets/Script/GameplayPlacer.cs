@@ -1,20 +1,26 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class GameplayPlacer
 {
-    public void Place(DungeonLayout layout, float difficulty)
+    public Dictionary<Vector2Int, string> Place(Dictionary<Vector2Int, Tile> layout,
+        float difficulty)
     {
-        foreach (var room in layout.rooms)
-        {
-            float enemyWeight = room.depth * difficulty;
-            float treasureWeight = 1f - enemyWeight;
+        Dictionary<Vector2Int, string> content = new();
 
+        foreach (var kv in layout)
+        {
             float r = Random.value;
 
-            if (r < enemyWeight)
-                room.content = "Enemy";
+            float enemyChance = difficulty;
+            float treasureChance = 1f - difficulty;
+
+            if (r < enemyChance)
+                content[kv.Key] = "Enemy";
             else
-                room.content = "Treasure";
+                content[kv.Key] = "Treasure";
         }
+
+        return content;
     }
 }

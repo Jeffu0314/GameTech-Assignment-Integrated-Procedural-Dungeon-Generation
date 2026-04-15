@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEngine;
 using static Tile;
 
-public class WaveFunctionCollapseBT : MonoBehaviour
+public class WFCGenerator
 {
     static readonly Vector2Int[] directions =
     {
@@ -20,12 +20,12 @@ public class WaveFunctionCollapseBT : MonoBehaviour
     public Tile startTile;
     public Tile bossTile;
 
-    public float cellSpacing = 10f;
-
     List<Cell> grid = new();
     List<Vector2Int> mainPath = new();
     Dictionary<Vector2Int, Tile> placed = new();
 
+    Vector2Int startPos;
+    Vector2Int bossPos;
 
     // =========================
     // BACKTRACK STACK
@@ -45,8 +45,11 @@ public class WaveFunctionCollapseBT : MonoBehaviour
     Stack<Snapshot> snapshots = new();
     Stack<Decision> decisions = new();
 
-    void Awake()
+    public Dictionary<Vector2Int, Tile> Generate(int size, int seed)
     {
+        this.dimensions = size;
+        Random.InitState(seed);
+
         bool success = false;
 
         for (int attempt = 0; attempt < 20 && !success; attempt++)
@@ -56,18 +59,12 @@ public class WaveFunctionCollapseBT : MonoBehaviour
             InitGrid();
             GenerateAdjacency();
             GenerateMainPath();
-
             CollapseMainPath();
 
             success = SolveWithBacktracking();
-
-            Debug.Log($"Attempt {attempt + 1} result: {success}");
         }
 
-        if (success)
-            Spawn();
-        else
-            Debug.LogError("FAILED GENERATION");
+        return placed; // ⭐ 返回数据，不是Spawn
     }
 
     // =========================
@@ -75,9 +72,6 @@ public class WaveFunctionCollapseBT : MonoBehaviour
     // =========================
     void ResetAll()
     {
-        foreach (var c in grid)
-            if (c != null) Destroy(c.gameObject);
-
         grid.Clear();
         mainPath.Clear();
         placed.Clear();
@@ -95,12 +89,10 @@ public class WaveFunctionCollapseBT : MonoBehaviour
         {
             for (int x = 0; x < dimensions; x++)
             {
-                Cell c = Instantiate(cellObj,
-                    new Vector3(x * cellSpacing, 0, y * cellSpacing),
-                    Quaternion.identity);
-
+                Cell c = new Cell();
                 c.gridPos = new Vector2Int(x, y);
-                c.CreateCell(false, tileObjects);
+                c.collapsed = false;
+                c.tileOptions = tileObjects.ToArray();
                 grid.Add(c);
             }
         }
@@ -125,19 +117,9 @@ public class WaveFunctionCollapseBT : MonoBehaviour
     // =========================
     void GenerateMainPath()
     {
-        Vector2Int current = Vector2Int.zero;
-        mainPath.Add(current);
+        PickStartAndBoss();
 
-        while (current.x < dimensions - 1 || current.y < dimensions - 1)
-        {
-            List<Vector2Int> dirs = new();
-
-            if (current.x < dimensions - 1) dirs.Add(Vector2Int.right);
-            if (current.y < dimensions - 1) dirs.Add(Vector2Int.up);
-
-            current += dirs[Random.Range(0, dirs.Count)];
-            mainPath.Add(current);
-        }
+        mainPath = GeneratePathBFS(startPos, bossPos);
     }
 
     void CollapseMainPath()
@@ -145,19 +127,142 @@ public class WaveFunctionCollapseBT : MonoBehaviour
         for (int i = 0; i < mainPath.Count; i++)
         {
             var pos = mainPath[i];
+
+            if (!InBounds(pos))
+            {
+                Debug.LogError("Path out of bounds: " + pos);
+                return;
+            }
+
             var cell = GetCell(pos);
 
-            Tile t =
-                i == 0 ? startTile :
-                i == mainPath.Count - 1 ? bossTile :
-                tileObjects[Random.Range(0, tileObjects.Length)];
+            Tile t;
+
+            if (i == 0)
+                t = startTile;
+            else if (i == mainPath.Count - 1)
+                t = bossTile;
+            else
+                t = PickPathTile(pos, i);
 
             cell.collapsed = true;
             cell.tileOptions = new Tile[] { t };
-            placed[pos] = t;
 
-            PropagateFrom(pos);
+            placed[pos] = t;
         }
+    }
+
+    Tile PickPathTile(Vector2Int pos, int i)
+    {
+        List<Vector2Int> requiredDirs = new();
+
+        
+
+        if (i > 0)
+            requiredDirs.Add(pos - mainPath[i - 1]);
+
+        if (i < mainPath.Count - 1)
+        {
+            Vector2Int dirToNext = mainPath[i + 1] - pos;
+            requiredDirs.Add(dirToNext);
+
+            // 如果 next 是 boss → 检查 boss 是否能接
+            if (i + 1 == mainPath.Count - 1)
+            {
+                if (!bossTile.HasConnection(-dirToNext))
+                    return null;
+            }
+        }
+
+        bool isStart = i == 0;
+        bool isEnd = i == mainPath.Count - 1;
+
+        var valid = tileObjects
+            .Where(t => t.IsStrictPath(requiredDirs, isStart, isEnd))
+            .Where(t =>
+            {
+                if (isStart) return t.tileType == Tile.TileType.Start;
+                if (isEnd) return t.tileType == Tile.TileType.Boss;
+                return t.tileType != Tile.TileType.Start &&
+                       t.tileType != Tile.TileType.Boss;
+            })
+            .ToList();
+
+        if (valid.Count == 0)
+        {
+            Debug.LogError("❌ No valid path tile at " + pos);
+            return null;
+        }
+
+        return valid[Random.Range(0, valid.Count)];
+    }
+
+    void PickStartAndBoss()
+    {
+        startPos = new Vector2Int(
+            Random.Range(0, dimensions),
+            Random.Range(0, dimensions)
+        );
+
+        do
+        {
+            bossPos = new Vector2Int(
+                Random.Range(0, dimensions),
+                Random.Range(0, dimensions)
+            );
+
+        } while (bossPos == startPos);
+    }
+
+    List<Vector2Int> GeneratePathBFS(Vector2Int start, Vector2Int goal)
+    {
+        Queue<Vector2Int> q = new();
+        Dictionary<Vector2Int, Vector2Int> parent = new();
+        HashSet<Vector2Int> visited = new();
+
+        q.Enqueue(start);
+        visited.Add(start);
+
+        while (q.Count > 0)
+        {
+            var cur = q.Dequeue();
+
+            if (cur == goal)
+                break;
+
+            foreach (var dir in directions)
+            {
+                var next = cur + dir;
+
+                if (!InBounds(next)) continue;
+                if (visited.Contains(next)) continue;
+
+                visited.Add(next);
+                parent[next] = cur;
+                q.Enqueue(next);
+            }
+        }
+
+        // reconstruct path
+        List<Vector2Int> path = new();
+
+        if (!parent.ContainsKey(goal))
+        {
+            Debug.LogError("No path found!");
+            return path;
+        }
+
+        Vector2Int p = goal;
+        path.Add(p);
+
+        while (p != start)
+        {
+            p = parent[p];
+            path.Add(p);
+        }
+
+        path.Reverse();
+        return path;
     }
 
     // =========================
@@ -177,7 +282,9 @@ public class WaveFunctionCollapseBT : MonoBehaviour
             if (cell.collapsed)
                 continue;
 
-            List<Tile> options = cell.tileOptions.ToList();
+            List<Tile> options = cell.tileOptions
+                .Where(t => t.tileType != TileType.Start &&
+                            t.tileType != TileType.Boss).ToList();
 
             if (options.Count == 0)
             {
@@ -348,9 +455,5 @@ public class WaveFunctionCollapseBT : MonoBehaviour
         return grid[p.x + p.y * dimensions];
     }
 
-    void Spawn()
-    {
-        foreach (var c in grid)
-            Instantiate(c.tileOptions[0], c.transform.position, Quaternion.identity);
-    }
+    
 }
