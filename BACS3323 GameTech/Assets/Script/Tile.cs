@@ -42,23 +42,5 @@ public class Tile
         return false;
     }
 
-    public bool IsStrictPath(List<Vector2Int> dirs, bool isStart, bool isEnd)
-    {
-        foreach (var d in dirs)
-        {
-            if (!HasConnection(d))
-                return false;
-        }
 
-        int count = 0;
-        if (up) count++;
-        if (down) count++;
-        if (left) count++;
-        if (right) count++;
-
-        if (isStart || isEnd)
-            return count == 1;
-
-        return count >= dirs.Count;
-    }
 }

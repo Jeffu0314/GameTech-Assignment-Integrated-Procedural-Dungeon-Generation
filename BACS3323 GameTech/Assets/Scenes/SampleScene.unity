@@ -507,9 +507,9 @@ MonoBehaviour:
     right: 1
     tileType: 4
   startTile:
-    prefab: {fileID: 4855257447243004726, guid: 916d7fadd95ad8d488eaa1ff8dc311f3, type: 3}
-    up: 0
-    down: 1
+    prefab: {fileID: 4175273848875385143, guid: a769784017a1a044e8884bca3ccce9af, type: 3}
+    up: 1
+    down: 0
     left: 0
     right: 0
     tileType: 0

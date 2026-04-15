@@ -52,21 +52,62 @@ public class WFCGenerator
         this.dimensions = size;
         Random.InitState(seed);
 
+        DungeonValidator validator = new DungeonValidator();
+
         bool success = false;
 
-        for (int attempt = 0; attempt < 20 && !success; attempt++)
+        for (int attempt = 0; attempt < 50 && !success; attempt++)
         {
             ResetAll();
 
             InitGrid();
             GenerateMainPath();
-            CollapseMainPath();
 
-            success = SolveWithBacktracking();
+            // ⭐ 主路径失败 → 直接 retry
+            if (!CollapseMainPath())
+                continue;
+
+            // ⭐ WFC
+            if (!SolveWithBacktracking())
+                continue;
+
+            // ⭐ Validator
+            if (!validator.Validate(placed, dimensions))
+                continue;
+
+            // ⭐ 必须有 start / boss
+            if (!placed.Values.Any(t => t.tileType == TileType.Start) ||
+                !placed.Values.Any(t => t.tileType == TileType.Boss))
+                continue;
+
+            success = true;
+        }
+
+        if (!success)
+        {
+            Debug.LogError("❌ Generation FAILED after retries");
+            return new Dictionary<Vector2Int, Tile>();
+        }
+
+        // ⭐ 填满所有格子
+        foreach (var cell in grid)
+        {
+            if (!placed.ContainsKey(cell.gridPos))
+            {
+                var valid = cell.tileOptions
+                    .Where(t => t.tileType != TileType.Start &&
+                                t.tileType != TileType.Boss).ToList();
+
+                if (valid.Count > 0)
+                {
+                    var chosen = valid[Random.Range(0, valid.Count)];
+                    placed[cell.gridPos] = chosen;
+                }
+            }
         }
 
 
-        return placed; // ⭐ 返回数据，不是Spawn
+        return placed;
     }
 
     // =========================
@@ -111,81 +152,89 @@ public class WFCGenerator
     }
 
     // 将主路径上的格子直接坍缩为特定 Tile，保证主路径正确
-    void CollapseMainPath()
+    bool CollapseMainPath()
     {
         for (int i = 0; i < mainPath.Count; i++)
         {
-            Debug.Log($"Collapsing main path cell {i}/{mainPath.Count}: {mainPath[i]}");
             var pos = mainPath[i];
-
-            if (!InBounds(pos))
-            {
-                Debug.LogError("Path out of bounds: " + pos);
-                return;
-            }
-
             var cell = GetCell(pos);
+
+            List<Vector2Int> requiredDirs = new();
+
+            if (i > 0)
+                requiredDirs.Add(mainPath[i - 1] - pos);
+
+            if (i < mainPath.Count - 1)
+                requiredDirs.Add(mainPath[i + 1] - pos);
 
             Tile t;
 
-            // Start 和 Boss 直接放特定 Tile，其他格子通过 PickPathTile 挑选满足连接要求的 Tile
             if (i == 0)
-                t = startTile;
+                t = FixTileToMatch(startTile, requiredDirs);
             else if (i == mainPath.Count - 1)
-                t = bossTile;
+                t = FixTileToMatch(bossTile, requiredDirs);
             else
-                t = PickPathTile(pos, i);
+                t = FindExactMatch(requiredDirs);
+
+            if (t == null)
+            {
+                Debug.LogError($"❌ Main path failed at {pos}");
+                return false;
+            }
 
             cell.collapsed = true;
             cell.tileOptions = new Tile[] { t };
-
             placed[pos] = t;
         }
+
+        return true;
     }
 
-    Tile PickPathTile(Vector2Int pos, int i)
+    Tile FixTileToMatch(Tile baseTile, List<Vector2Int> dirs)
     {
-        List<Vector2Int> requiredDirs = new();
+        if (dirs.All(d => baseTile.HasConnection(d)))
+            return baseTile;
 
-        
+        Debug.LogError("❌ Start/Boss方向不匹配");
+        return null;
+    }
 
-        if (i > 0)
-            requiredDirs.Add(pos - mainPath[i - 1]);
-
-        if (i < mainPath.Count - 1)
+    Tile FindExactMatch(List<Vector2Int> dirs)
+    {
+        foreach (var t in tileObjects)
         {
-            Vector2Int dirToNext = mainPath[i + 1] - pos;
-            requiredDirs.Add(dirToNext);
+            if (t.tileType == Tile.TileType.Start ||
+                t.tileType == Tile.TileType.Boss)
+                continue;
 
-            // 如果 next 是 boss → 检查 boss 是否能接
-            if (i + 1 == mainPath.Count - 1)
+            // 必须包含所有 requiredDirs
+            bool valid = true;
+
+            foreach (var d in dirs)
             {
-                if (!bossTile.HasConnection(-dirToNext))
-                    return null;
+                if (!t.HasConnection(d))
+                {
+                    valid = false;
+                    break;
+                }
             }
+
+            if (!valid) continue;
+
+            // 不能多连接（避免分叉破坏主路径）
+            int count = 0;
+            if (t.up) count++;
+            if (t.down) count++;
+            if (t.left) count++;
+            if (t.right) count++;
+
+            if (count < dirs.Count)
+                continue;
+
+            return t;
         }
 
-        bool isStart = i == 0;
-        bool isEnd = i == mainPath.Count - 1;
-
-        var valid = tileObjects
-            .Where(t => t.IsStrictPath(requiredDirs, isStart, isEnd))
-            .Where(t =>
-            {
-                if (isStart) return t.tileType == Tile.TileType.Start;
-                if (isEnd) return t.tileType == Tile.TileType.Boss;
-                return t.tileType != Tile.TileType.Start &&
-                       t.tileType != Tile.TileType.Boss;
-            })
-            .ToList();
-
-        if (valid.Count == 0)
-        {
-            Debug.LogError("❌ No valid path tile at " + pos);
-            return null;
-        }
-
-        return valid[Random.Range(0, valid.Count)];
+        return null;
     }
 
     // 随机放置 Start 和 Boss，保证它们不重叠
@@ -269,6 +318,7 @@ public class WFCGenerator
     // =========================
     bool SolveWithBacktracking()
     {
+
         while (true)
         {
             iteration++;
@@ -285,6 +335,9 @@ public class WFCGenerator
                 return true;
 
             Vector2Int pos = cell.gridPos;
+
+            if (mainPath.Contains(pos))
+                continue;
 
             if (cell.collapsed)
                 continue;
