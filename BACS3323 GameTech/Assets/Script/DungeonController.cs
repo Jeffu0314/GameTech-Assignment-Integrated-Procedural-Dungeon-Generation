@@ -13,6 +13,11 @@ public class DungeonController : MonoBehaviour
 
     public bool enableBranches = true;
 
+    [Header("Content Placement")]
+    public int maxCombat = 1;
+    public int maxTreasure = 1;
+    public int maxTrap = 1;
+
     [Header("Tiles")]
     public Tile[] tileObjects;
     public Tile startTile;
@@ -22,11 +27,6 @@ public class DungeonController : MonoBehaviour
 
 
     List<GameObject> spawned = new List<GameObject>();
-
-    void Start()
-    {
-        RunGeneration();
-    }
 
     public void RunGeneration()
     {

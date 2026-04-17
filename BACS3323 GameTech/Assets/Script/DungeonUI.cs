@@ -11,6 +11,11 @@ public class DungeonUI : MonoBehaviour
     public Slider difficultySlider;
     public Toggle branchToggle;
     public TMP_InputField cellSpacingInput;
+
+    public TMP_Dropdown combatInput;
+    public TMP_Dropdown treasureInput;
+    public TMP_Dropdown trapInput;
+
     public TMP_Text debugText;
 
     public void OnGenerateClicked()
@@ -27,9 +32,18 @@ public class DungeonUI : MonoBehaviour
         if (float.TryParse(cellSpacingInput.text, out float cellSpacing))
             controller.cellSpacing = cellSpacing;
 
+
+        controller.maxCombat = combatInput.value;
+
+        controller.maxTreasure = treasureInput.value;
+
+        controller.maxTrap = trapInput.value;
+
+
         controller.RunGeneration();
 
         debugText.text =
+            $"Size: {controller.size}\n" +
             $"Seed: {controller.seed}\n" +
             $"Difficulty: {controller.difficulty:F2}";
     }
