@@ -11,6 +11,7 @@ public class DungeonUI : MonoBehaviour
     public Slider difficultySlider;
     public Toggle branchToggle;
     public TMP_InputField cellSpacingInput;
+    public TMP_Text debugText;
 
     public void OnGenerateClicked()
     {
@@ -27,5 +28,17 @@ public class DungeonUI : MonoBehaviour
             controller.cellSpacing = cellSpacing;
 
         controller.RunGeneration();
+
+        debugText.text =
+            $"Seed: {controller.seed}\n" +
+            $"Difficulty: {controller.difficulty:F2}";
+    }
+
+    public void OnRandomSeed()
+    {
+        int s = Random.Range(0, 99999);
+        seedInput.text = s.ToString();
+
+        OnGenerateClicked();
     }
 }
