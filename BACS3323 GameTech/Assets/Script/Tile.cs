@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [System.Serializable]
@@ -12,6 +13,8 @@ public class Tile
     public bool right;
 
     public TileType tileType;
+
+    public float weight = 1f;
 
     public enum TileType
     {
@@ -42,6 +45,5 @@ public class Tile
         if (dir == Vector2Int.right) return right;
         return false;
     }
-
 
 }

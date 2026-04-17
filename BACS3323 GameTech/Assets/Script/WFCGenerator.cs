@@ -15,7 +15,6 @@ public class WFCGenerator
 
     public int dimensions;
     public Tile[] tileObjects;
-    public Cell cellObj;
 
     public Tile startTile;
     public Tile bossTile;
@@ -481,7 +480,7 @@ public class WFCGenerator
             // save snapshot BEFORE decision
             SaveSnapshot();
 
-            Tile chosen = options[Random.Range(0, options.Count)];
+            Tile chosen = GetWeightedRandom(options);
             decisions.Push(new Decision
             {
                 pos = pos,
@@ -684,5 +683,25 @@ public class WFCGenerator
         return grid[p.x + p.y * dimensions];
     }
 
+    Tile GetWeightedRandom(List<Tile> options)
+    {
+        float total = options.Sum(t => t.weight);
+        float r = Random.Range(0, total);
+
+        float cumulative = 0;
+
+        foreach (var t in options)
+        {
+            cumulative += t.weight;
+            if (r <= cumulative)
+                return t;
+        }
+
+        return options[0];
+    }
+
+    // =========================
+    // Content Placement
+    // =========================
 
 }

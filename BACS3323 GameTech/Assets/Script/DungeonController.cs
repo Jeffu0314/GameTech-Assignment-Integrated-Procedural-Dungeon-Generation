@@ -21,6 +21,8 @@ public class DungeonController : MonoBehaviour
     public float cellSpacing = 10f;
 
 
+    List<GameObject> spawned = new List<GameObject>();
+
     void Start()
     {
         RunGeneration();
@@ -36,7 +38,21 @@ public class DungeonController : MonoBehaviour
         wfc.bossTile = bossTile;
         wfc.emptyTile = emptyTile;
 
-        var result = wfc.Generate(size, seed, difficulty, enableBranches);
+        DungeonConfig config = new DungeonConfig();
+
+        config.size = size;
+        config.seed = seed;
+        config.difficulty = difficulty;
+        config.enableBranches = enableBranches;
+        config.cellSpacing = cellSpacing;
+
+        var result = DungeonAPI.GenerateDungeon(
+            config,
+            tileObjects,
+            startTile,
+            bossTile,
+            emptyTile
+        );
 
         Debug.Log("Generated: " + result.Count);
 
@@ -45,16 +61,24 @@ public class DungeonController : MonoBehaviour
 
     void Render(Dictionary<Vector2Int, Tile> layout)
     {
+        // ⭐ 清掉旧的
+        foreach (var obj in spawned)
+            Destroy(obj);
+
+        spawned.Clear();
+
         foreach (var kv in layout)
         {
             if (kv.Value == null || kv.Value.prefab == null)
             {
-                Debug.LogError($"Missing tile or prefab at {kv.Key}");
+                Debug.LogError($"Missing tile at {kv.Key}");
                 continue;
             }
 
-            Vector3 pos = new Vector3(kv.Key.x * cellSpacing, 0, kv.Key.y * cellSpacing);
-            Instantiate(kv.Value.prefab, pos, Quaternion.identity);
+            Vector3 pos = new Vector3(kv.Key.x * cellSpacing, 4, kv.Key.y * cellSpacing);
+
+            var go = Instantiate(kv.Value.prefab, pos, Quaternion.identity);
+            spawned.Add(go);
         }
     }
 }
