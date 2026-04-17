@@ -11,10 +11,13 @@ public class DungeonController : MonoBehaviour
     [Range(0f, 1f)]
     public float difficulty = 0.5f;
 
+    public bool enableBranches = true;
+
     [Header("Tiles")]
     public Tile[] tileObjects;
     public Tile startTile;
     public Tile bossTile;
+    public Tile emptyTile;
     public float cellSpacing = 10f;
 
 
@@ -31,8 +34,9 @@ public class DungeonController : MonoBehaviour
         wfc.tileObjects = tileObjects;
         wfc.startTile = startTile;
         wfc.bossTile = bossTile;
+        wfc.emptyTile = emptyTile;
 
-        var result = wfc.Generate(size, seed, difficulty);
+        var result = wfc.Generate(size, seed, difficulty, enableBranches);
 
         Debug.Log("Generated: " + result.Count);
 

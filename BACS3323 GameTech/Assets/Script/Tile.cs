@@ -21,7 +21,8 @@ public class Tile
         CorridorTurn,
         T_Junction,
         Cross,
-        DeadEnd
+        DeadEnd,
+        Empty
     }
 
     public bool Matches(Tile other, Vector2Int dir)

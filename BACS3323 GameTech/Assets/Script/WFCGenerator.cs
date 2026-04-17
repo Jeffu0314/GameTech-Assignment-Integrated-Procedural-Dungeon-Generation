@@ -19,6 +19,7 @@ public class WFCGenerator
 
     public Tile startTile;
     public Tile bossTile;
+    public Tile emptyTile;
 
     List<Cell> grid = new();
     public List<Vector2Int> mainPath = new();
@@ -26,11 +27,14 @@ public class WFCGenerator
 
     HashSet<Vector2Int> branchCells = new();
     List<List<Vector2Int>> branches = new();
+    HashSet<Vector2Int> branchRoots = new();
 
     Vector2Int startPos;
     Vector2Int bossPos;
 
     int iteration = 0;
+    int branchCount;
+    int branchLength;
 
     // =========================
     // BACKTRACK STACK
@@ -50,7 +54,7 @@ public class WFCGenerator
     Stack<Snapshot> snapshots = new();
     Stack<Decision> decisions = new();
 
-    public Dictionary<Vector2Int, Tile> Generate(int size, int seed, float difficulty)
+    public Dictionary<Vector2Int, Tile> Generate(int size, int seed, float difficulty, bool enableBranches)
     {
         this.dimensions = size;
         Random.InitState(seed);
@@ -66,19 +70,28 @@ public class WFCGenerator
             InitGrid();
             GenerateMainPath();
 
-            int branchCount = Mathf.RoundToInt(difficulty * 5);
-            int branchLength = Mathf.RoundToInt(Mathf.Lerp(2, 6, difficulty));
+            Debug.Log($"Attempt {attempt}");
 
-            GenerateBranches(branchCount, branchLength);
+            if (enableBranches)
+            {
+                branchCount = Mathf.RoundToInt(difficulty * 5);
+                branchLength = Mathf.RoundToInt(Mathf.Lerp(2, 6, difficulty));
+
+                GenerateBranches(branchCount, branchLength);
+            }
 
             if (!CollapseMainPath())
                 continue;
 
-            CollapseBranches();
+            Debug.Log($"Main Path SUCCESS at attempt {attempt}");
 
-            // ⭐ 主路径失败 → 直接 retry
-            if (!CollapseMainPath())
-                continue;
+
+            if (enableBranches)
+            {
+                CollapseBranches();
+            }
+
+            Debug.Log($"Branches SUCCESS at attempt {attempt}");
 
             // ⭐ WFC
             if (!SolveWithBacktracking())
@@ -102,20 +115,12 @@ public class WFCGenerator
             return new Dictionary<Vector2Int, Tile>();
         }
 
-        // ⭐ 填满所有格子
+        // 用Empty填满所有格子
         foreach (var cell in grid)
         {
             if (!placed.ContainsKey(cell.gridPos))
             {
-                var valid = cell.tileOptions
-                    .Where(t => t.tileType != TileType.Start &&
-                                t.tileType != TileType.Boss).ToList();
-
-                if (valid.Count > 0)
-                {
-                    var chosen = valid[Random.Range(0, valid.Count)];
-                    placed[cell.gridPos] = chosen;
-                }
+                placed[cell.gridPos] = emptyTile;
             }
         }
 
@@ -134,6 +139,9 @@ public class WFCGenerator
 
         snapshots.Clear();
         decisions.Clear();
+
+        branchCells.Clear();
+        branches.Clear();
     }
 
     // =========================
@@ -222,7 +230,26 @@ public class WFCGenerator
             else if (i == mainPath.Count - 1)
                 t = FixTileToMatch(bossTile, requiredDirs);
             else
-                t = FindMatch(requiredDirs, false);
+            {
+                bool isBranchRoot = branchRoots.Contains(pos);
+
+                Vector2Int? branchDir = null;
+
+                if (isBranchRoot)
+                {
+                    var branch = branches.FirstOrDefault(b => b.Contains(pos));
+
+                    if (branch != null)
+                    {
+                        var first = branch[0];
+
+                        if (Vector2Int.Distance(first, pos) == 1)
+                            branchDir = first - pos;
+                    }
+                }
+
+                t = FindMatch(requiredDirs, isBranchRoot, branchDir);
+            }
 
             if (t == null)
             {
@@ -247,12 +274,13 @@ public class WFCGenerator
         return null;
     }
 
-    Tile FindMatch(List<Vector2Int> dirs, bool allowBranch)
+    Tile FindMatch(List<Vector2Int> dirs, bool allowBranch, Vector2Int? extraDir = null)
     {
+        var candidates = new List<Tile>();
+
         foreach (var t in tileObjects)
         {
-            if (t.tileType == TileType.Start ||
-                t.tileType == TileType.Boss)
+            if (t.tileType == TileType.Start || t.tileType == TileType.Boss)
                 continue;
 
             if (!dirs.All(d => t.HasConnection(d)))
@@ -262,17 +290,26 @@ public class WFCGenerator
 
             if (allowBranch)
             {
-                if (count >= dirs.Count)
-                    return t;
+                if (count == dirs.Count + 1)
+                {
+                    if (extraDir.HasValue && !t.HasConnection(extraDir.Value))
+                        continue;
+
+                    candidates.Add(t);
+                }
             }
             else
             {
-                if (count >= dirs.Count)
-                    return t;
+                // 严格等于（保证主路径直线）
+                if (count == dirs.Count)
+                    candidates.Add(t);
             }
         }
 
-        return null;
+        if (candidates.Count == 0)
+            return null;
+
+        return candidates[Random.Range(0, candidates.Count)];
     }
 
     int CountConnections(Tile t)
@@ -311,12 +348,36 @@ public class WFCGenerator
     {
         for (int i = 0; i < branchCount; i++)
         {
-            var start = mainPath[Random.Range(1, mainPath.Count - 2)];
+            var candidates = mainPath.Skip(1).Take(mainPath.Count - 2)
+                        .Where(p => !branchRoots.Contains(p))
+                        .ToList();
+
+            if (candidates.Count == 0) return;
+
+            var start = candidates[Random.Range(0, candidates.Count)];
+            branchRoots.Add(start);
+
+            // 找一个方向延伸（第一格必须贴 main path）
+            var possibleDirs = directions
+                .Select(d => new { dir = d, pos = start + d })
+                .Where(x => InBounds(x.pos) &&
+                            !mainPath.Contains(x.pos) &&
+                            !branchCells.Contains(x.pos))
+                .ToList();
+
+            if (possibleDirs.Count == 0)
+                continue;
+
+            var first = possibleDirs[Random.Range(0, possibleDirs.Count)];
 
             List<Vector2Int> branch = new();
-            Vector2Int current = start;
 
-            for (int l = 0; l < maxLength; l++)
+            Vector2Int current = first.pos;
+            branch.Add(current);
+            branchCells.Add(current);
+
+            // 关键：继续往外长
+            for (int l = 1; l < maxLength; l++)
             {
                 var neighbors = directions
                     .Select(d => current + d)
@@ -343,35 +404,40 @@ public class WFCGenerator
 
     void CollapseBranches()
     {
-        foreach (var pos in branchCells)
+        foreach (var branch in branches)
         {
-            var cell = GetCell(pos);
-
-            List<Vector2Int> requiredDirs = new();
-
-            // 找所有邻居连接（主路径 or branch）
-            foreach (var dir in directions)
+            for (int i = 0; i < branch.Count; i++)
             {
-                var neighbor = pos + dir;
+                var pos = branch[i];
+                var cell = GetCell(pos);
 
-                if (placed.ContainsKey(neighbor))
+                List<Vector2Int> requiredDirs = new();
+
+                // ⭐ 前一个节点（branch内部连接）
+                if (i > 0)
+                    requiredDirs.Add(branch[i - 1] - pos);
+
+                // ⭐ 第一个点要连接 main path
+                if (i == 0)
                 {
-                    if (placed[neighbor].HasConnection(-dir))
-                        requiredDirs.Add(dir);
+                    var start = mainPath
+                        .First(p => directions.Any(d => p + d == pos));
+
+                    requiredDirs.Add(start - pos);
                 }
+
+                var t = FindMatch(requiredDirs, true);
+
+                if (t == null)
+                {
+                    Debug.LogError("❌ Branch collapse failed");
+                    continue;
+                }
+
+                cell.collapsed = true;
+                cell.tileOptions = new Tile[] { t };
+                placed[pos] = t;
             }
-
-            var t = FindMatch(requiredDirs, true);
-
-            if (t == null)
-            {
-                Debug.LogError("❌ Branch collapse failed");
-                continue;
-            }
-
-            cell.collapsed = true;
-            cell.tileOptions = new Tile[] { t };
-            placed[pos] = t;
         }
     }
 
@@ -397,9 +463,6 @@ public class WFCGenerator
                 return true;
 
             Vector2Int pos = cell.gridPos;
-
-            if (mainPath.Contains(pos))
-                continue;
 
             if (cell.collapsed)
                 continue;
@@ -597,7 +660,7 @@ public class WFCGenerator
     Cell GetLowestEntropyCell()
     {
         return grid
-            .Where(c => !c.collapsed)
+            .Where(c => !c.collapsed && branchCells.Contains(c.gridPos))
             .OrderBy(c => c.tileOptions.Length)
             .FirstOrDefault();
     }
