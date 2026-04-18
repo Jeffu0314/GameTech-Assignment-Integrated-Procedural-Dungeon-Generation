@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using static RoomData;
 
 public class DungeonController : MonoBehaviour
 {
@@ -15,9 +16,12 @@ public class DungeonController : MonoBehaviour
     public bool enableBranches = true;
 
     [Header("Content Placement")]
-    public int maxCombat = 1;
-    public int maxTreasure = 1;
-    public int maxTrap = 1;
+    public int maxCombat = 0;
+    public int maxTreasure = 0;
+    public int maxTrap = 0;
+    public GameObject enemyPrefab;
+    public GameObject treasurePrefab;
+    public GameObject trapPrefab;
 
     [Header("Tiles")]
     public Tile[] tileObjects;
@@ -32,6 +36,7 @@ public class DungeonController : MonoBehaviour
     Dictionary<Vector2Int, RoomData> roomDataMap = new();
     public void RunGeneration()
     {
+        Random.InitState(seed);
         WFCGenerator wfc = new WFCGenerator();
 
         // 把 Inspector 的值传进去
@@ -67,7 +72,7 @@ public class DungeonController : MonoBehaviour
 
     void Render(Dictionary<Vector2Int, Tile> layout)
     {
-        // ⭐ 清掉旧的
+        // 清掉旧的
         foreach (var obj in spawned)
             Destroy(obj);
 
@@ -87,10 +92,42 @@ public class DungeonController : MonoBehaviour
                 Debug.Log($"{kv.Key} -> {content}");
             }
 
+
             Vector3 pos = new Vector3(kv.Key.x * cellSpacing, 4, kv.Key.y * cellSpacing);
 
+            Vector3 cpPos = new Vector3(kv.Key.x * cellSpacing, 1, kv.Key.y * cellSpacing);
+
             var go = Instantiate(kv.Value.prefab, pos, Quaternion.identity);
+
             spawned.Add(go);
+
+            if (roomDataMap.ContainsKey(kv.Key))
+            {
+                var content = roomDataMap[kv.Key].content;
+
+                if (kv.Value.tileType != Tile.TileType.Empty)
+                {
+                    GameObject obj = null;
+
+                    switch (content)
+                    {
+                        case RoomContentType.Combat:
+                            obj = Instantiate(enemyPrefab, cpPos, Quaternion.identity);
+                            break;
+
+                        case RoomContentType.Treasure:
+                            obj = Instantiate(treasurePrefab, cpPos, Quaternion.identity);
+                            break;
+
+                        case RoomContentType.Trap:
+                            obj = Instantiate(trapPrefab, cpPos, Quaternion.identity);
+                            break;
+                    }
+
+                    if (obj != null)
+                        spawned.Add(obj);
+                }
+            }
         }
     }
 
@@ -115,7 +152,8 @@ public class DungeonController : MonoBehaviour
 
         List<Vector2Int> rooms = layout.Keys
             .Where(p => layout[p].tileType != Tile.TileType.Start &&
-                        layout[p].tileType != Tile.TileType.Boss)
+                        layout[p].tileType != Tile.TileType.Boss &&
+                        CountConnections(layout[p]) > 0)
             .OrderBy(x => Random.value)
             .ToList();
 
@@ -153,5 +191,15 @@ public class DungeonController : MonoBehaviour
             return RoomData.RoomContentType.Empty;
 
         return candidates[Random.Range(0, candidates.Count)];
+    }
+
+    int CountConnections(Tile t)
+    {
+        int c = 0;
+        if (t.up) c++;
+        if (t.down) c++;
+        if (t.left) c++;
+        if (t.right) c++;
+        return c;
     }
 }

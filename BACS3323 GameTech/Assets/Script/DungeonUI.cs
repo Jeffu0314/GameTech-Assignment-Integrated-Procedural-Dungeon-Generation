@@ -15,9 +15,9 @@ public class DungeonUI : MonoBehaviour
     public Toggle branchToggle;
     public TMP_InputField cellSpacingInput;
 
-    public TMP_Dropdown combatInput;
-    public TMP_Dropdown treasureInput;
-    public TMP_Dropdown trapInput;
+    public TMP_InputField combatInput;
+    public TMP_InputField treasureInput;
+    public TMP_InputField trapInput;
 
     public TMP_Text debugText;
 
@@ -35,20 +35,24 @@ public class DungeonUI : MonoBehaviour
         if (float.TryParse(cellSpacingInput.text, out float cellSpacing))
             controller.cellSpacing = cellSpacing;
 
+        if (int.TryParse(combatInput.text, out int maxCombat))
+            controller.maxCombat = maxCombat;
 
-        controller.maxCombat = combatInput.value;
+        if (int.TryParse(treasureInput.text, out int maxTreasure))
+            controller.maxTreasure = maxTreasure;
 
-        controller.maxTreasure = treasureInput.value;
-
-        controller.maxTrap = trapInput.value;
-
+        if (int.TryParse(trapInput.text, out int maxTrap))
+            controller.maxTrap = maxTrap;
 
         controller.RunGeneration();
 
         debugText.text =
             $"Size: {controller.size}\n" +
             $"Seed: {controller.seed}\n" +
-            $"Difficulty: {controller.difficulty:F2}";
+            $"Difficulty: {controller.difficulty:F2}\n" +
+            $"Combat num: {controller.maxCombat}\n" +
+            $"Treasure num: {controller.maxTreasure}\n" +
+            $"Trap num: {controller.maxTrap}\n";
     }
 
     public void OnRandomSeed()

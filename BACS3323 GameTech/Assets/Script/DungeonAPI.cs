@@ -25,7 +25,6 @@ public class DungeonAPI
             config.enableBranches
         );
 
-        // Step 2 会在这里加内容分配
         return layout;
     }
 }

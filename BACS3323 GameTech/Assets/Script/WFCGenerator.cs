@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.InputSystem.XR;
 using static RoomData;
 using static Tile;
-using static UnityEditor.PlayerSettings;
 
 public class WFCGenerator
 {
@@ -37,7 +36,6 @@ public class WFCGenerator
     int iteration = 0;
     int branchCount;
     int branchLength;
-    float tChance;
 
     // =========================
     // BACKTRACK STACK
@@ -79,7 +77,6 @@ public class WFCGenerator
             {
                 branchCount = Mathf.RoundToInt(difficulty * 5);
                 branchLength = Mathf.RoundToInt(Mathf.Lerp(2, 6, difficulty));
-                tChance = Mathf.Lerp(0.2f, 0.5f, difficulty);
 
                 GenerateBranches(branchCount, branchLength);
             }
@@ -296,9 +293,6 @@ public class WFCGenerator
             {
                 if (count == dirs.Count + 1)
                 {
-                    if (count == 3 && Random.value > tChance)
-                        continue;
-
                     if (extraDir.HasValue && !t.HasConnection(extraDir.Value))
                         continue;
 
@@ -475,11 +469,8 @@ public class WFCGenerator
                 continue;
 
             List<Tile> options = cell.tileOptions
-                .Where(t =>
-                    t.tileType != TileType.Start &&
-                    t.tileType != TileType.Boss &&
-                    IsTileAllowed(pos, t)
-                ).ToList();
+                .Where(t => t.tileType != TileType.Start &&
+                            t.tileType != TileType.Boss).ToList();
 
             if (options.Count == 0)
             {
@@ -508,47 +499,6 @@ public class WFCGenerator
                     return false;
             }
         }
-    }
-
-    bool IsTileAllowed(Vector2Int pos, Tile t)
-    {
-        if (branchRoots.Contains(pos))
-            return true;
-
-        int connections = CountConnections(t);
-
-        // 限制边缘不能用高连接tile
-        if (IsEdge(pos))
-        {
-            if (connections >= 3 && Random.value > 0.5f)
-                return false;
-        }
-
-        // 全局限制T密度
-        if (connections == 3 && HasTooManyTJunctionNeighbors(pos))
-        {
-            if (Random.value > 0.3f) // 只降低概率，不是禁止
-                return false;
-        }
-
-        return true;
-    }
-
-    bool HasTooManyTJunctionNeighbors(Vector2Int pos)
-    {
-        int count = 0;
-
-        foreach (var dir in directions)
-        {
-            var n = pos + dir;
-            if (placed.ContainsKey(n))
-            {
-                if (CountConnections(placed[n]) >= 3)
-                    count++;
-            }
-        }
-
-        return count >= 2;
     }
 
     // =========================
@@ -594,15 +544,6 @@ public class WFCGenerator
 
                 foreach (var t in cell.tileOptions)
                 {
-                    // 不允许边缘向外开口
-                    if (IsEdge(next))
-                    {
-                        if (next.x == 0 && t.left) continue;
-                        if (next.x == dimensions - 1 && t.right) continue;
-                        if (next.y == 0 && t.down) continue;
-                        if (next.y == dimensions - 1 && t.up) continue;
-                    }
-
                     bool ok = false;
 
                     if (dir == Vector2Int.up)
@@ -628,13 +569,8 @@ public class WFCGenerator
             }
         }
 
-        return true;
-    }
 
-    bool IsEdge(Vector2Int p)
-    {
-        return p.x == 0 || p.x == dimensions - 1 ||
-               p.y == 0 || p.y == dimensions - 1;
+        return true;
     }
 
     // =========================
