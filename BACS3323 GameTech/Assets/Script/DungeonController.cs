@@ -93,10 +93,18 @@ public class DungeonController : MonoBehaviour
             }
 
 
-            Vector3 pos = new Vector3(kv.Key.x * cellSpacing, 4, kv.Key.y * cellSpacing);
+            Vector3 pos = new Vector3(
+                kv.Key.x * cellSpacing,
+                4, 
+                kv.Key.y * cellSpacing);
 
-            Vector3 cpPos = new Vector3(kv.Key.x * cellSpacing, 1, kv.Key.y * cellSpacing);
+            Vector3 cpPos = new Vector3(
+                kv.Key.x * cellSpacing, 
+                1, 
+                kv.Key.y * cellSpacing);
 
+            Debug.DrawRay(pos, Vector3.forward, Color.blue, 5f); // +Z
+            Debug.DrawRay(pos, Vector3.right, Color.red, 5f);    // +X
             var go = Instantiate(kv.Value.prefab, pos, Quaternion.identity);
 
             spawned.Add(go);

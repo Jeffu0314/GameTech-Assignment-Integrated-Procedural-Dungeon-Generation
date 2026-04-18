@@ -9,10 +9,10 @@ public class WFCGenerator
 {
     static readonly Vector2Int[] directions =
     {
-        Vector2Int.up,
-        Vector2Int.down,
-        Vector2Int.left,
-        Vector2Int.right
+        new Vector2Int(0, 1),   // +Z (up)
+        new Vector2Int(0, -1),  // -Z (down)
+        new Vector2Int(-1, 0),  // -X (left)
+        new Vector2Int(1, 0)    // +X (right)
     };
 
     public int dimensions;
@@ -75,7 +75,7 @@ public class WFCGenerator
 
             if (enableBranches)
             {
-                branchCount = Mathf.RoundToInt(difficulty * 5);
+                branchCount = Mathf.RoundToInt(difficulty * 3);
                 branchLength = Mathf.RoundToInt(Mathf.Lerp(2, 6, difficulty));
 
                 GenerateBranches(branchCount, branchLength);
@@ -249,7 +249,7 @@ public class WFCGenerator
                     }
                 }
 
-                t = FindMatch(requiredDirs, isBranchRoot, branchDir);
+                t = FindMatch(pos, requiredDirs, isBranchRoot, branchDir);
             }
 
             if (t == null)
@@ -275,13 +275,17 @@ public class WFCGenerator
         return null;
     }
 
-    Tile FindMatch(List<Vector2Int> dirs, bool allowBranch, Vector2Int? extraDir = null)
+    Tile FindMatch(Vector2Int pos, List<Vector2Int> dirs, bool allowBranch, Vector2Int? extraDir = null)
     {
         var candidates = new List<Tile>();
 
         foreach (var t in tileObjects)
         {
             if (t.tileType == TileType.Start || t.tileType == TileType.Boss)
+                continue;
+
+            // 边界限制
+            if (IsOutOfBoundsConnection(pos, t))
                 continue;
 
             if (!dirs.All(d => t.HasConnection(d)))
@@ -291,7 +295,7 @@ public class WFCGenerator
 
             if (allowBranch)
             {
-                if (count == dirs.Count + 1)
+                if (count >= dirs.Count)
                 {
                     if (extraDir.HasValue && !t.HasConnection(extraDir.Value))
                         continue;
@@ -322,6 +326,17 @@ public class WFCGenerator
         if (t.right) c++;
         return c;
     }
+
+    bool IsOutOfBoundsConnection(Vector2Int pos, Tile t)
+    {
+        if (pos.y == dimensions - 1 && t.up) return true;
+        if (pos.y == 0 && t.down) return true;
+        if (pos.x == 0 && t.left) return true;
+        if (pos.x == dimensions - 1 && t.right) return true;
+
+        return false;
+    }
+
 
     // 随机放置 Start 和 Boss，保证它们不重叠
     void PickStartAndBoss()
@@ -427,7 +442,23 @@ public class WFCGenerator
                     requiredDirs.Add(start - pos);
                 }
 
-                var t = FindMatch(requiredDirs, true);
+                bool isEnd = (i == branch.Count - 1);
+
+                Tile t;
+
+                if (isEnd)
+                {
+                    // 强制 DeadEnd
+                    t = tileObjects
+                        .Where(x => x.tileType == TileType.DeadEnd &&
+                                    requiredDirs.All(d => x.HasConnection(d)))
+                        .OrderBy(_ => Random.value)
+                        .FirstOrDefault();
+                }
+                else
+                {
+                    t = FindMatch(pos, requiredDirs, true);
+                }
 
                 if (t == null)
                 {
