@@ -8,8 +8,6 @@ public class RoomData
 
     public RoomContentType content;
 
-    Dictionary<Vector2Int, RoomData> placed;
-
     public enum RoomContentType
     {
         Empty,

@@ -1,6 +1,9 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
+using static RoomData;
 
 public class DungeonUI : MonoBehaviour
 {
@@ -55,4 +58,6 @@ public class DungeonUI : MonoBehaviour
 
         OnGenerateClicked();
     }
+
+    
 }
