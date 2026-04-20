@@ -180,6 +180,7 @@ public class DungeonController : MonoBehaviour
         }
     }
 
+    // decide content type based on the max allowed and already used
     RoomData.RoomContentType DecideContentType(Dictionary<RoomData.RoomContentType, int> used)
     {
         List<RoomData.RoomContentType> candidates = new();

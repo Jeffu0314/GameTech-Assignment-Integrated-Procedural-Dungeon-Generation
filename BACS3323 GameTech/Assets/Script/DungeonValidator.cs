@@ -4,11 +4,13 @@ using UnityEngine;
 
 public class DungeonValidator
 {
+    // 目前的验证规则：Start 和 Boss 之间必须有路径
     public bool Validate(Dictionary<Vector2Int, Tile> placed, int size)
     {
         return IsConnected(placed, size);
     }
 
+    // BFS 判断 Start 和 Boss 是否连通
     bool IsConnected(Dictionary<Vector2Int, Tile> placed, int size)
     {
         var visited = new HashSet<Vector2Int>();

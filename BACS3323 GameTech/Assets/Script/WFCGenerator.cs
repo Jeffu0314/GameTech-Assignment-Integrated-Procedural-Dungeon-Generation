@@ -86,7 +86,6 @@ public class WFCGenerator
 
             Debug.Log($"Main Path SUCCESS at attempt {attempt}");
 
-
             if (enableBranches)
             {
                 CollapseBranches();
@@ -149,6 +148,8 @@ public class WFCGenerator
 
         branchCells.Clear();
         branches.Clear();
+
+        iteration = 0;
     }
 
     // =========================
@@ -160,6 +161,7 @@ public class WFCGenerator
         {
             for (int x = 0; x < dimensions; x++)
             {
+                // 初始化每个格子，初始状态是未坍缩，选项列表包含所有Tile
                 Cell c = new Cell();
                 c.gridPos = new Vector2Int(x, y);
                 c.collapsed = false;
@@ -187,6 +189,7 @@ public class WFCGenerator
 
         while (current != bossPos || mainPath.Count < targetLength)
         {
+            // 找到所有未访问过的相邻格子
             var neighbors = directions
                 .Select(d => current + d)
                 .Where(p => InBounds(p) && !visited.Contains(p))
@@ -195,6 +198,7 @@ public class WFCGenerator
             if (neighbors.Count == 0)
                 break;
 
+            // 优先选择更靠近Boss的格子，增加主路径直线性和Boss可达性
             // bias toward boss
             neighbors = neighbors
                 .OrderBy(p => Vector2Int.Distance(p, bossPos))
@@ -268,6 +272,7 @@ public class WFCGenerator
                 return false;
             }
 
+            // 坍缩格子，放置Tile
             cell.collapsed = true;
             cell.tileOptions = new Tile[] { t };
             placed[pos] = t;
@@ -307,6 +312,7 @@ public class WFCGenerator
 
             if (allowBranch)
             {
+                // 至少满足主路径连接需求，允许有额外连接（分叉连接）
                 if (count >= dirs.Count)
                 {
                     if (extraDir.HasValue && !t.HasConnection(extraDir.Value))
@@ -372,7 +378,8 @@ public class WFCGenerator
     // =========================
     // BRANCHES
     // =========================
-
+    // on main path (except start/boss), randomly pick some cells as branch roots,
+    // then extend a branch in a random valid direction for a random length
     void GenerateBranches(int branchCount = 3, int maxLength = 4)
     {
         for (int i = 0; i < branchCount; i++)
@@ -387,6 +394,7 @@ public class WFCGenerator
             branchRoots.Add(start);
 
             // 找一个方向延伸（第一格必须贴 main path）
+            // find a direction that can connect to main path and is not blocked
             var possibleDirs = directions
                 .Select(d => new { dir = d, pos = start + d })
                 .Where(x => InBounds(x.pos) &&
@@ -402,12 +410,14 @@ public class WFCGenerator
             List<Vector2Int> branch = new();
 
             Vector2Int current = first.pos;
+
             branch.Add(current);
             branchCells.Add(current);
 
-            // 关键：继续往外长
+            // extend the branch for a random length
             for (int l = 1; l < maxLength; l++)
             {
+                // find next direction that is not blocked
                 var neighbors = directions
                     .Select(d => current + d)
                     .Where(p => InBounds(p) &&
@@ -431,6 +441,8 @@ public class WFCGenerator
         }
     }
 
+    // 将分叉点和分叉路径上的格子预先坍缩为满足主路径连接需求的Tile，
+    // 优先满足分叉连接需求（如果有），但不强制（允许分叉点不分叉）
     void CollapseBranches()
     {
         foreach (var branch in branches)
@@ -442,11 +454,11 @@ public class WFCGenerator
 
                 List<Vector2Int> requiredDirs = new();
 
-                // ⭐ 前一个节点（branch内部连接）
+                // 前一个节点（branch内部连接）
                 if (i > 0)
                     requiredDirs.Add(branch[i - 1] - pos);
 
-                // ⭐ 第一个点要连接 main path
+                // 第一个点要连接 main path
                 if (i == 0)
                 {
                     var start = mainPath
@@ -470,6 +482,7 @@ public class WFCGenerator
                 }
                 else
                 {
+                    // 其他格子正常匹配，允许分叉连接但不强制
                     t = FindMatch(pos, requiredDirs, true);
                 }
 
@@ -502,21 +515,26 @@ public class WFCGenerator
                 return false;
             }
 
+            // 选择一个最低熵的格子（未坍缩，选项最少）
             Cell cell = GetLowestEntropyCell();
 
+            // 如果没有格子了，说明所有格子都坍缩了，成功完成
             if (cell == null)
                 return true;
-
+            
             Vector2Int pos = cell.gridPos;
 
+            // 如果这个格子已经被分叉预处理过了，就跳过（分叉预处理过的格子已经坍缩了）
             if (cell.collapsed)
                 continue;
 
+            // 从选项中随机选择一个，但不能是 Start/Boss
             List<Tile> options = cell.tileOptions
                 .Where(t => t.tileType != TileType.Start &&
                             t.tileType != TileType.Boss)
                 .ToList();
 
+            // 如果没有选项了，说明之前的选择有问题必须回退
             if (options.Count == 0)
             {
                 if (!Backtrack())
@@ -524,7 +542,7 @@ public class WFCGenerator
                 continue;
             }
 
-            // save snapshot BEFORE decision
+            // 必须在做出选择之前保存快照，因为ApplyChoice会直接修改placed和cell状态
             SaveSnapshot();
 
             Tile chosen = GetWeightedRandom(options);
@@ -534,10 +552,12 @@ public class WFCGenerator
                 remainingOptions = options
             });
 
+            
             ApplyChoice(pos, chosen);
 
             bool contradiction = !PropagateFrom(pos);
 
+            // 如果传播导致矛盾，说明之前的选择有问题必须回退
             if (contradiction)
             {
                 if (!Backtrack())
@@ -546,29 +566,11 @@ public class WFCGenerator
         }
     }
 
-    bool IsTileValidForCell(Vector2Int pos, Tile t)
-    {
-        foreach (var dir in directions)
-        {
-            var neighborPos = pos + dir;
-
-            if (!InBounds(neighborPos)) continue;
-            if (!placed.ContainsKey(neighborPos)) continue;
-
-            var neighbor = placed[neighborPos];
-
-            if (dir == Vector2Int.up && !(t.up && neighbor.down)) return false;
-            if (dir == Vector2Int.down && !(t.down && neighbor.up)) return false;
-            if (dir == Vector2Int.left && !(t.left && neighbor.right)) return false;
-            if (dir == Vector2Int.right && !(t.right && neighbor.left)) return false;
-        }
-
-        return true;
-    }
-
     // =========================
     // APPLY CHOICE
     // =========================
+    // 将选定的Tile应用到格子上，更新placed字典
+    // Apply the chosen tile to the cell and update the placed dictionary
     void ApplyChoice(Vector2Int pos, Tile t)
     {
         var cell = GetCell(pos);
@@ -582,31 +584,41 @@ public class WFCGenerator
     // =========================
     // PROPAGATION (returns valid/invalid)
     // =========================
+    // 从指定格子开始传播约束，更新相邻格子的选项列表，如果发现某个格子没有选项了则返回false表示矛盾
+    // Propagate constraints from the given cell to its neighbors, updating their options.
     bool PropagateFrom(Vector2Int start)
     {
         Queue<Vector2Int> q = new();
         q.Enqueue(start);
 
+        // 传播过程中，如果某个格子的选项列表被更新了，就把它加入队列继续传播，直到没有格子需要更新了
         while (q.Count > 0)
         {
             var cur = q.Dequeue();
 
             foreach (var dir in directions)
             {
+                // 计算相邻格子的坐标
                 var next = cur + dir;
                 if (!InBounds(next)) continue;
 
+                // 如果相邻格子已经坍缩了，就不需要传播了
                 var cell = GetCell(next);
                 if (cell.collapsed) continue;
 
+                // 如果相邻格子没有被放置过，说明它还没有被约束过，跳过（分叉预处理过的格子已经坍缩了，不需要传播）
                 if (!placed.ContainsKey(cur)) continue;
 
+                // 获取当前格子已放置的Tile，作为约束源
                 var source = placed[cur];
 
+                // 记录传播前的选项数量，如果传播后选项数量变少了，说明这个格子被约束了，需要继续传播它的邻居
                 int before = cell.tileOptions.Length;
                 
                 List<Tile> valid = new();
 
+                // 根据连接关系过滤相邻格子的选项列表，只有与当前格子已放置的Tile在dir方向上连接的选项才是有效的
+                // Filter the cell by connection
                 foreach (var t in cell.tileOptions)
                 {
                     bool ok = false;
@@ -624,11 +636,13 @@ public class WFCGenerator
                         valid.Add(t);
                 }
 
+                // 如果没有有效选项了，说明之前的选择导致矛盾，必须回退
                 if (valid.Count == 0)
                     return false;
 
                 cell.tileOptions = valid.ToArray();
 
+                // 如果选项数量变少了，说明这个格子被约束了，需要继续传播它的邻居
                 if (valid.Count < before)
                     q.Enqueue(next);
             }
@@ -641,11 +655,14 @@ public class WFCGenerator
     // =========================
     // BACKTRACK
     // =========================
+    // 回退到上一个决策点，恢复快照状态，并从上一个决策点的剩余选项中选择下一个选项继续尝试，如果没有剩余选项了就继续回退
     bool Backtrack()
     {
+        // 如果没有快照了，说明已经回退到最初状态了，无法再回退了，失败
         if (snapshots.Count == 0)
             return false;
 
+        // prevent infinite backtracking loop
         if (decisions.Count > 500)
         {
             Debug.LogError("Too many backtracks");
@@ -654,20 +671,27 @@ public class WFCGenerator
 
         RestoreSnapshot();
 
+        // 从上一个决策点的剩余选项中选择下一个选项继续尝试，如果没有剩余选项了就继续回退
         if (decisions.Count > 0)
         {
+            // 取出上一个决策点
             var last = decisions.Pop();
 
+            // 如果上一个决策点没有剩余选项了，说明之前的选择有问题必须继续回退
             if (last.remainingOptions.Count == 0)
                 return Backtrack();
 
+            // 从剩余选项中选择下一个选项继续尝试
             last.remainingOptions.RemoveAt(0);
 
+            // 如果上一个决策点没有剩余选项了，说明之前的选择有问题必须继续回退
             if (last.remainingOptions.Count == 0)
                 return Backtrack();
 
+            // 在做出选择之前保存快照，因为ApplyChoice会直接修改placed和cell状态
             SaveSnapshot();
 
+            // 将上一个决策点的下一个选项应用到格子上，继续尝试
             ApplyChoice(last.pos, last.remainingOptions[0]);
         }
 
@@ -702,13 +726,13 @@ public class WFCGenerator
 
         foreach (var c in grid)
         {
-            c.collapsed = false; // ⭐必须恢复
+            c.collapsed = false;
 
             if (s.optionsSnapshot.ContainsKey(c.gridPos))
                 c.tileOptions = s.optionsSnapshot[c.gridPos].ToArray();
         }
 
-        // 重新标记 collapsed（非常重要）
+        // 重新标记 collapsed
         foreach (var p in placed)
         {
             var cell = GetCell(p.Key);
@@ -751,6 +775,7 @@ public class WFCGenerator
         return grid[p.x + p.y * dimensions];
     }
 
+    // 从选项列表中根据权重随机选择一个Tile
     Tile GetWeightedRandom(List<Tile> options)
     {
         float total = options.Sum(t => t.weight);
