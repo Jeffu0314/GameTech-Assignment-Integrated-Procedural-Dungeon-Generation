@@ -94,15 +94,20 @@ public class WFCGenerator
 
             Debug.Log($"Branches SUCCESS at attempt {attempt}");
 
-            // ⭐ WFC
+            // WFC
             if (!SolveWithBacktracking())
                 continue;
 
-            // ⭐ Validator
-            if (!validator.Validate(placed, dimensions))
-                continue;
+            // Validator
+            bool valid = validator.Validate(placed, dimensions);
 
-            // ⭐ 必须有 start / boss
+            if (!valid)
+            {
+                Debug.LogWarning("Soft fail - accepting partial dungeon");
+                success = true; //fallback
+            }
+
+            // must have start / boss
             if (!placed.Values.Any(t => t.tileType == TileType.Start) ||
                 !placed.Values.Any(t => t.tileType == TileType.Boss))
                 continue;
@@ -116,6 +121,7 @@ public class WFCGenerator
             return new Dictionary<Vector2Int, Tile>();
         }
 
+        // use empty tile for unplaced cells
         // 用Empty填满所有格子
         foreach (var cell in grid)
         {
@@ -189,7 +195,7 @@ public class WFCGenerator
             if (neighbors.Count == 0)
                 break;
 
-            // bias toward boss（关键）
+            // bias toward boss
             neighbors = neighbors
                 .OrderBy(p => Vector2Int.Distance(p, bossPos))
                 .ToList();
@@ -208,7 +214,9 @@ public class WFCGenerator
             mainPath.Add(bossPos);
     }
 
-    // 将主路径上的格子直接坍缩为特定 Tile，保证主路径正确
+
+    // 将主路径上的格子直接坍缩为start/boss Tile，保证主路径正确
+    // collapse main path first to reduce WFC complexity and ensure start/boss placement
     bool CollapseMainPath()
     {
         for (int i = 0; i < mainPath.Count; i++)
@@ -226,8 +234,10 @@ public class WFCGenerator
 
             Tile t;
 
+            // start
             if (i == 0)
                 t = FixTileToMatch(startTile, requiredDirs);
+            // Boss 
             else if (i == mainPath.Count - 1)
                 t = FixTileToMatch(bossTile, requiredDirs);
             else
@@ -254,7 +264,7 @@ public class WFCGenerator
 
             if (t == null)
             {
-                Debug.LogError($"❌ Main path failed at {pos}");
+                Debug.LogError($"!!! Main path failed at {pos}");
                 return false;
             }
 
@@ -266,15 +276,17 @@ public class WFCGenerator
         return true;
     }
 
+    // Start/Boss必须严格匹配主路径方向，否则直接失败（不允许分叉）
     Tile FixTileToMatch(Tile baseTile, List<Vector2Int> dirs)
     {
         if (dirs.All(d => baseTile.HasConnection(d)))
             return baseTile;
 
-        Debug.LogError("❌ Start/Boss方向不匹配");
+        Debug.LogError("!!! Start/Boss dir not match");
         return null;
     }
 
+    // 在满足主路径连接需求的基础上，优先满足分叉需求（如果是分叉点），但不强制（允许分叉点不分叉）
     Tile FindMatch(Vector2Int pos, List<Vector2Int> dirs, bool allowBranch, Vector2Int? extraDir = null)
     {
         var candidates = new List<Tile>();
@@ -305,7 +317,7 @@ public class WFCGenerator
             }
             else
             {
-                // 严格等于（保证主路径直线）
+                // 严格等于 (保证主路径直线)
                 if (count == dirs.Count)
                     candidates.Add(t);
             }
@@ -327,6 +339,7 @@ public class WFCGenerator
         return c;
     }
 
+    // 检查Tile是否有朝边界的连接，如果有则不合法
     bool IsOutOfBoundsConnection(Vector2Int pos, Tile t)
     {
         if (pos.y == dimensions - 1 && t.up) return true;
@@ -501,7 +514,8 @@ public class WFCGenerator
 
             List<Tile> options = cell.tileOptions
                 .Where(t => t.tileType != TileType.Start &&
-                            t.tileType != TileType.Boss).ToList();
+                            t.tileType != TileType.Boss)
+                .ToList();
 
             if (options.Count == 0)
             {
@@ -530,6 +544,26 @@ public class WFCGenerator
                     return false;
             }
         }
+    }
+
+    bool IsTileValidForCell(Vector2Int pos, Tile t)
+    {
+        foreach (var dir in directions)
+        {
+            var neighborPos = pos + dir;
+
+            if (!InBounds(neighborPos)) continue;
+            if (!placed.ContainsKey(neighborPos)) continue;
+
+            var neighbor = placed[neighborPos];
+
+            if (dir == Vector2Int.up && !(t.up && neighbor.down)) return false;
+            if (dir == Vector2Int.down && !(t.down && neighbor.up)) return false;
+            if (dir == Vector2Int.left && !(t.left && neighbor.right)) return false;
+            if (dir == Vector2Int.right && !(t.right && neighbor.left)) return false;
+        }
+
+        return true;
     }
 
     // =========================

@@ -103,8 +103,6 @@ public class DungeonController : MonoBehaviour
                 1, 
                 kv.Key.y * cellSpacing);
 
-            Debug.DrawRay(pos, Vector3.forward, Color.blue, 5f); // +Z
-            Debug.DrawRay(pos, Vector3.right, Color.red, 5f);    // +X
             var go = Instantiate(kv.Value.prefab, pos, Quaternion.identity);
 
             spawned.Add(go);
@@ -161,7 +159,7 @@ public class DungeonController : MonoBehaviour
         List<Vector2Int> rooms = layout.Keys
             .Where(p => layout[p].tileType != Tile.TileType.Start &&
                         layout[p].tileType != Tile.TileType.Boss &&
-                        CountConnections(layout[p]) > 0)
+                        CountConnections(layout[p]) > 1)
             .OrderBy(x => Random.value)
             .ToList();
 
